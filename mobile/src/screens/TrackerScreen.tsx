@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Linking, Pressable, SafeAreaView, StyleSheet, Switch, Text, View } from "react-native";
-import MapView, { Marker, PROVIDER_GOOGLE, Region } from "react-native-maps";
+import { MapView, Marker } from "react-native-amap3d";
 
 import {
   buildLocationWebSocketUrl,
@@ -16,6 +16,7 @@ import {
   stopBackgroundLocation,
   type PermissionSnapshot,
 } from "../services/location";
+import { initializeAmap } from "../services/amap";
 import type {
   LocationSnapshot,
   MemoryPoint,
@@ -24,6 +25,7 @@ import type {
   SharingSettings,
   User,
 } from "../types";
+import { wgs84ToGcj02, type LatLng } from "../utils/coordinates";
 
 type Props = {
   user: User;
@@ -34,6 +36,11 @@ type Props = {
   onSharingChanged: (settings: SharingSettings) => void;
 };
 
+type CameraPosition = {
+  target: LatLng;
+  zoom: number;
+};
+
 function formatTime(value?: string) {
   if (!value) {
     return "No data";
@@ -41,14 +48,37 @@ function formatTime(value?: string) {
   return new Date(value).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
-function buildRegion(myLocation: LocationSnapshot | null, partnerLocation: LocationSnapshot | null): Region {
+function formatBattery(value?: number | null) {
+  if (value === null || value === undefined) {
+    return "No data";
+  }
+  return `${Math.round(value * 100)}%`;
+}
+
+function toMapPoint(location: LocationSnapshot | MemoryPoint): LatLng {
+  return wgs84ToGcj02({
+    latitude: location.latitude,
+    longitude: location.longitude
+  });
+}
+
+function buildCameraPosition(
+  myLocation: LocationSnapshot | null,
+  partnerLocation: LocationSnapshot | null
+): CameraPosition {
   const base = partnerLocation || myLocation;
   return {
-    latitude: base?.latitude ?? 31.2304,
-    longitude: base?.longitude ?? 121.4737,
-    latitudeDelta: 0.05,
-    longitudeDelta: 0.05
+    target: base ? toMapPoint(base) : { latitude: 31.2304, longitude: 121.4737 },
+    zoom: 14
   };
+}
+
+function MapPin({ color, label }: { color: string; label: string }) {
+  return (
+    <View style={[styles.pin, { backgroundColor: color }]}>
+      <Text style={styles.pinText}>{label}</Text>
+    </View>
+  );
 }
 
 export function TrackerScreen({
@@ -59,6 +89,7 @@ export function TrackerScreen({
   onLogout,
   onSharingChanged,
 }: Props) {
+  const mapRef = useRef<any>(null);
   const [myLocation, setMyLocation] = useState<LocationSnapshot | null>(null);
   const [partnerLocation, setPartnerLocation] = useState<LocationSnapshot | null>(null);
   const [partnerSharing, setPartnerSharing] = useState<SharingSettings | null>(null);
@@ -70,10 +101,21 @@ export function TrackerScreen({
   const partner = pairing.partner;
   const partnerVisible = partnerSharing?.enabled !== false;
   const visiblePartnerLocation = partnerVisible ? partnerLocation : null;
-  const region = useMemo(
-    () => buildRegion(myLocation, visiblePartnerLocation),
+  const cameraPosition = useMemo(
+    () => buildCameraPosition(myLocation, visiblePartnerLocation),
     [myLocation, visiblePartnerLocation]
   );
+
+  useEffect(() => {
+    const error = initializeAmap();
+    if (error) {
+      setStatus(error);
+    }
+  }, []);
+
+  useEffect(() => {
+    mapRef.current?.moveCamera(cameraPosition, 300);
+  }, [cameraPosition]);
 
   useEffect(() => {
     async function loadLocationState() {
@@ -197,32 +239,30 @@ export function TrackerScreen({
 
   return (
     <View style={styles.screen}>
-      <MapView provider={PROVIDER_GOOGLE} style={styles.map} initialRegion={region} region={region}>
+      <MapView
+        ref={mapRef}
+        style={styles.map}
+        initialCameraPosition={cameraPosition}
+        onLoad={() => mapRef.current?.moveCamera(cameraPosition, 100)}
+      >
         {myLocation ? (
-          <Marker
-            coordinate={{ latitude: myLocation.latitude, longitude: myLocation.longitude }}
-            pinColor="#2f6f64"
-            title="Me"
-          />
+          <Marker position={toMapPoint(myLocation)}>
+            <MapPin color="#2f6f64" label="Me" />
+          </Marker>
         ) : null}
         {visiblePartnerLocation && partner ? (
-          <Marker
-            coordinate={{
-              latitude: visiblePartnerLocation.latitude,
-              longitude: visiblePartnerLocation.longitude
-            }}
-            pinColor="#b9503d"
-            title={partner.display_name}
-          />
+          <Marker position={toMapPoint(visiblePartnerLocation)}>
+            <MapPin color="#b9503d" label={partner.display_name.slice(0, 8)} />
+          </Marker>
         ) : null}
         {memoryPoints.map((point) => (
           <Marker
             key={point.id}
-            coordinate={{ latitude: point.latitude, longitude: point.longitude }}
-            pinColor="#7d5fb2"
-            title={point.title}
-            description={point.note ?? undefined}
-          />
+            onPress={() => setStatus(point.note || point.title)}
+            position={toMapPoint(point)}
+          >
+            <MapPin color="#7d5fb2" label="Mem" />
+          </Marker>
         ))}
       </MapView>
 
@@ -256,6 +296,14 @@ export function TrackerScreen({
               <Text style={styles.value}>{formatTime(visiblePartnerLocation?.received_at)}</Text>
             </View>
             <View style={styles.metric}>
+              <Text style={styles.label}>My battery</Text>
+              <Text style={styles.value}>{formatBattery(myLocation?.battery_level)}</Text>
+            </View>
+            <View style={styles.metric}>
+              <Text style={styles.label}>Partner battery</Text>
+              <Text style={styles.value}>{formatBattery(visiblePartnerLocation?.battery_level)}</Text>
+            </View>
+            <View style={styles.metric}>
               <Text style={styles.label}>Realtime</Text>
               <Text style={styles.value}>{socketState === "open" ? "Online" : "Reconnecting"}</Text>
             </View>
@@ -286,6 +334,21 @@ const styles = StyleSheet.create({
   },
   map: {
     ...StyleSheet.absoluteFillObject
+  },
+  pin: {
+    minWidth: 42,
+    minHeight: 30,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: "#ffffff",
+    paddingHorizontal: 8
+  },
+  pinText: {
+    color: "#ffffff",
+    fontSize: 12,
+    fontWeight: "800"
   },
   overlay: {
     flex: 1,
