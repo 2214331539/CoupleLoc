@@ -1,12 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { buildLocationWebSocketUrl } from "../api/client";
 import { CalendarScreen } from "./CalendarScreen";
 import { ChatScreen } from "./ChatScreen";
 import { ProfileScreen } from "./ProfileScreen";
 import { TrackerScreen } from "./TrackerScreen";
 import { colors, radius, shadows, spacing } from "../theme";
-import type { PairingStatus, SharingSettings, User } from "../types";
+import type { PairingStatus, RealtimeEvent, SharingSettings, User } from "../types";
 
 type TabKey = "map" | "chat" | "calendar" | "profile";
 
@@ -30,6 +31,33 @@ const tabs: Array<{ key: TabKey; label: string; icon: string }> = [
 
 export function MainScreen(props: Props) {
   const [activeTab, setActiveTab] = useState<TabKey>(props.pairing.paired ? "map" : "profile");
+
+  useEffect(() => {
+    if (props.suspended) {
+      return;
+    }
+
+    const socket = new WebSocket(buildLocationWebSocketUrl(props.token));
+    socket.onmessage = (event) => {
+      try {
+        const payload = JSON.parse(event.data) as RealtimeEvent;
+        if (payload.type === "pairing.request_resolved" && payload.pairing?.paired) {
+          props.onPairingChanged(payload.pairing);
+        }
+      } catch {
+        // Other screens own their detailed realtime handling.
+      }
+    };
+    const keepAlive = setInterval(() => {
+      if (socket.readyState === WebSocket.OPEN) {
+        socket.send("ping");
+      }
+    }, 25_000);
+    return () => {
+      clearInterval(keepAlive);
+      socket.close();
+    };
+  }, [props.onPairingChanged, props.suspended, props.token]);
 
   return (
     <View style={styles.screen}>

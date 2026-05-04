@@ -23,6 +23,16 @@ export type PairingInvite = {
   expires_at: string;
 };
 
+export type PairingRequest = {
+  id: string;
+  invite_code: string;
+  status: "pending" | "approved" | "rejected";
+  requester: Partner;
+  creator: Partner;
+  created_at: string;
+  responded_at: string | null;
+};
+
 export type SharingSettings = {
   enabled: boolean;
   mode: "always" | "one_hour" | "foreground" | "paused";
@@ -126,10 +136,24 @@ export type BatteryLowEvent = {
   location: LocationSnapshot;
 };
 
+export type PairingRequestCreatedEvent = {
+  type: "pairing.request_created";
+  request: PairingRequest;
+  pairing: null;
+};
+
+export type PairingRequestResolvedEvent = {
+  type: "pairing.request_resolved";
+  request: PairingRequest;
+  pairing: PairingStatus | null;
+};
+
 export type RealtimeEvent =
   | LocationEvent
   | SharingEvent
   | ChatMessageEvent
   | CalendarEventChangedEvent
   | MemoryPointChangedEvent
-  | BatteryLowEvent;
+  | BatteryLowEvent
+  | PairingRequestCreatedEvent
+  | PairingRequestResolvedEvent;

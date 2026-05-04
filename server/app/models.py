@@ -41,6 +41,24 @@ class PairingInvite(Base):
     )
 
 
+class PairingRequest(Base):
+    __tablename__ = "pairing_requests"
+    __table_args__ = (
+        Index("ix_pairing_requests_creator_status", "creator_user_id", "status"),
+        Index("ix_pairing_requests_requester_status", "requester_user_id", "status"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    invite_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("pairing_invites.id", ondelete="CASCADE"))
+    creator_user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    requester_user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    status: Mapped[str] = mapped_column(String(16), default="pending", index=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
 class SmsVerificationCode(Base):
     __tablename__ = "sms_verification_codes"
     __table_args__ = (

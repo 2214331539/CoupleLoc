@@ -10,6 +10,7 @@ Current migrations:
 - `server/alembic/versions/0002_shared_features.py`
 - `server/alembic/versions/0003_sharing_privacy_options.py`
 - `server/alembic/versions/0004_sms_auth.py`
+- `server/alembic/versions/0005_pairing_requests.py`
 
 ## Design Goals
 
@@ -27,6 +28,7 @@ Current migrations:
 | `users` | Login identity and display profile. |
 | `sms_verification_codes` | One-time SMS codes for login, registration, and password reset. |
 | `pairing_invites` | One-time invite codes used to pair two users. |
+| `pairing_requests` | Pending approve/reject requests created from invite codes. |
 | `couples` | Active two-person relationship records. |
 | `sharing_settings` | Per-user location sharing switch, mode, and privacy preferences. |
 | `latest_locations` | One overwritten location row per user. |
@@ -128,6 +130,47 @@ Lifecycle:
 - New invite: `consumed_at = null`.
 - Accepted invite: `consumed_at` set to the acceptance timestamp.
 - Expired invites are rejected by the API. A cleanup job can delete old rows later.
+
+## `pairing_requests`
+
+Stores the consent step between entering a heart code and creating an active
+couple. Entering a valid invite code creates a pending request for the invite
+creator; only creator approval creates the `couples` row.
+
+| Column | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `id` | `uuid` | yes | Primary key. |
+| `invite_id` | `uuid` | yes | Invite code that was used. |
+| `creator_user_id` | `uuid` | yes | User who generated the invite code and must approve. |
+| `requester_user_id` | `uuid` | yes | User who entered the invite code. |
+| `status` | `varchar(16)` | yes | `pending`, `approved`, or `rejected`. |
+| `created_at` | `timestamptz` | yes | Request timestamp. |
+| `responded_at` | `timestamptz` | no | Set when approved or rejected. |
+
+Indexes and constraints:
+
+- Primary key: `id`
+- Index: `ix_pairing_requests_status` on `status`
+- Composite index: `ix_pairing_requests_creator_status` on
+  `(creator_user_id, status)`
+- Composite index: `ix_pairing_requests_requester_status` on
+  `(requester_user_id, status)`
+- Foreign keys:
+  - `invite_id -> pairing_invites.id on delete cascade`
+  - `creator_user_id -> users.id on delete cascade`
+  - `requester_user_id -> users.id on delete cascade`
+
+Behavior:
+
+- `POST /pairing/requests` validates a heart code and creates or returns a
+  pending request.
+- `GET /pairing/requests/incoming` lists pending requests for the invite creator.
+- `GET /pairing/requests/outgoing` lists pending requests sent by the current user.
+- `POST /pairing/requests/{request_id}/approve` creates the active couple,
+  marks the invite consumed, and sends realtime pairing resolution events to
+  both users.
+- `POST /pairing/requests/{request_id}/reject` marks the request rejected and
+  notifies the requester.
 
 ## `couples`
 
@@ -469,6 +512,70 @@ Realtime events are not persisted in the database.
     "source": "background",
     "recorded_at": "2026-05-02T12:00:00Z",
     "received_at": "2026-05-02T12:00:01Z"
+  }
+}
+```
+
+`pairing.request_created`:
+
+```json
+{
+  "type": "pairing.request_created",
+  "request": {
+    "id": "uuid",
+    "invite_code": "A1B2C3",
+    "status": "pending",
+    "requester": {
+      "id": "uuid",
+      "username": "13800000000",
+      "phone_number": "+8613800000000",
+      "display_name": "Alice"
+    },
+    "creator": {
+      "id": "uuid",
+      "username": "13900000000",
+      "phone_number": "+8613900000000",
+      "display_name": "Bob"
+    },
+    "created_at": "2026-05-04T12:00:00Z",
+    "responded_at": null
+  },
+  "pairing": null
+}
+```
+
+`pairing.request_resolved`:
+
+```json
+{
+  "type": "pairing.request_resolved",
+  "request": {
+    "id": "uuid",
+    "invite_code": "A1B2C3",
+    "status": "approved",
+    "requester": {
+      "id": "uuid",
+      "username": "13800000000",
+      "phone_number": "+8613800000000",
+      "display_name": "Alice"
+    },
+    "creator": {
+      "id": "uuid",
+      "username": "13900000000",
+      "phone_number": "+8613900000000",
+      "display_name": "Bob"
+    },
+    "created_at": "2026-05-04T12:00:00Z",
+    "responded_at": "2026-05-04T12:01:00Z"
+  },
+  "pairing": {
+    "paired": true,
+    "partner": {
+      "id": "uuid",
+      "username": "13900000000",
+      "phone_number": "+8613900000000",
+      "display_name": "Bob"
+    }
   }
 }
 ```

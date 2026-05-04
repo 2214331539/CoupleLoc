@@ -68,12 +68,23 @@ class PairingAcceptRequest(BaseModel):
 class PartnerPublic(BaseModel):
     id: UUID
     username: str
+    phone_number: str | None = None
     display_name: str
 
 
 class PairingStatusOut(BaseModel):
     paired: bool
     partner: PartnerPublic | None = None
+
+
+class PairingRequestOut(BaseModel):
+    id: UUID
+    invite_code: str
+    status: str
+    requester: PartnerPublic
+    creator: PartnerPublic
+    created_at: datetime
+    responded_at: datetime | None = None
 
 
 class SharingSettingsIn(BaseModel):

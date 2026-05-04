@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Linking, Pressable, StyleSheet, Switch, Text, View } from "react-native";
+import { Animated, StyleSheet, Switch, Text, View } from "react-native";
 import { MapView, Marker } from "react-native-amap3d";
 
 import {
   buildLocationWebSocketUrl,
-  createMemoryPoint,
   fetchLocationState,
   listMemoryPoints,
   sendChatMessage,
@@ -28,7 +27,7 @@ import {
   type PermissionSnapshot,
 } from "../services/location";
 import { initializeAmap } from "../services/amap";
-import { colors, radius, shadows, spacing } from "../theme";
+import { colors, radius, spacing } from "../theme";
 import type {
   LocationSnapshot,
   MemoryPoint,
@@ -127,12 +126,16 @@ export function TrackerScreen({
   onSharingChanged,
 }: Props) {
   const mapRef = useRef<any>(null);
+  const chromeRestoreTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const ignoreCameraMoveUntil = useRef(0);
+  const chromeProgress = useRef(new Animated.Value(1)).current;
   const [myLocation, setMyLocation] = useState<LocationSnapshot | null>(null);
   const [partnerLocation, setPartnerLocation] = useState<LocationSnapshot | null>(null);
   const [partnerSharing, setPartnerSharing] = useState<SharingSettings | null>(null);
   const [memoryPoints, setMemoryPoints] = useState<MemoryPoint[]>([]);
   const [permission, setPermission] = useState<PermissionSnapshot | null>(null);
   const [amapReady, setAmapReady] = useState(false);
+  const [chromeCollapsed, setChromeCollapsed] = useState(false);
   const [status, setStatus] = useState<string>("准备同步位置");
   const [socketState, setSocketState] = useState<"connecting" | "open" | "closed">("closed");
 
@@ -146,6 +149,56 @@ export function TrackerScreen({
   const distance = sharing.share_distance
     ? distanceKm(myLocation, visiblePartnerLocation)
     : null;
+  const topChromeTranslateY = chromeProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-190, 0]
+  });
+  const bottomChromeTranslateY = chromeProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [260, 0]
+  });
+
+  const clearChromeRestoreTimer = () => {
+    if (chromeRestoreTimer.current) {
+      clearTimeout(chromeRestoreTimer.current);
+      chromeRestoreTimer.current = null;
+    }
+  };
+
+  const collapseMapChrome = () => {
+    setChromeCollapsed(true);
+    clearChromeRestoreTimer();
+    chromeRestoreTimer.current = setTimeout(() => {
+      setChromeCollapsed(false);
+      chromeRestoreTimer.current = null;
+    }, 5_000);
+  };
+
+  const markProgrammaticCameraMove = () => {
+    ignoreCameraMoveUntil.current = Date.now() + 700;
+  };
+
+  const handleMapInteraction = () => {
+    if (Date.now() < ignoreCameraMoveUntil.current) {
+      return;
+    }
+    collapseMapChrome();
+  };
+
+  useEffect(() => {
+    Animated.timing(chromeProgress, {
+      toValue: chromeCollapsed ? 0 : 1,
+      duration: chromeCollapsed ? 180 : 240,
+      useNativeDriver: true
+    }).start();
+  }, [chromeCollapsed, chromeProgress]);
+
+  useEffect(
+    () => () => {
+      clearChromeRestoreTimer();
+    },
+    []
+  );
 
   useEffect(() => {
     const error = initializeAmap();
@@ -158,6 +211,7 @@ export function TrackerScreen({
 
   useEffect(() => {
     if (amapReady) {
+      markProgrammaticCameraMove();
       mapRef.current?.moveCamera(cameraPosition, 300);
     }
   }, [amapReady, cameraPosition]);
@@ -316,25 +370,6 @@ export function TrackerScreen({
     }
   };
 
-  const saveMemoryHere = async () => {
-    if (!myLocation) {
-      setStatus("还没有可保存的位置");
-      return;
-    }
-    try {
-      const created = await createMemoryPoint({
-        title: `我们的记忆 ${new Date().toLocaleDateString()}`,
-        note: status,
-        latitude: myLocation.latitude,
-        longitude: myLocation.longitude
-      });
-      setMemoryPoints((points) => [created, ...points]);
-      setStatus("已添加地图记忆点");
-    } catch (err) {
-      setStatus(err instanceof Error ? err.message : "添加记忆点失败");
-    }
-  };
-
   const socketLabel = socketState === "open" ? "实时在线" : socketState === "connecting" ? "连接中" : "离线";
 
   return (
@@ -344,7 +379,13 @@ export function TrackerScreen({
           ref={mapRef}
           style={styles.map}
           initialCameraPosition={cameraPosition}
-          onLoad={() => mapRef.current?.moveCamera(cameraPosition, 100)}
+          onCameraIdle={handleMapInteraction}
+          onCameraMove={handleMapInteraction}
+          onLoad={() => {
+            markProgrammaticCameraMove();
+            mapRef.current?.moveCamera(cameraPosition, 100);
+          }}
+          onPress={handleMapInteraction}
         >
           {myLocation ? (
             <Marker onPress={() => setStatus("这是你的最新位置")} position={toMapPoint(myLocation)} />
@@ -370,57 +411,60 @@ export function TrackerScreen({
       )}
 
       <SafeScreen style={styles.overlay}>
-        <AppHeader
-          left={<IconBubble icon={user.display_name.slice(0, 1).toUpperCase()} size={38} />}
-          right={<StatusPill label={socketLabel} tone={socketState === "open" ? "mint" : "plain"} />}
-          subtitle={status}
-          title="实时位置"
-        />
-
-        <Card style={styles.summaryCard}>
-          <View style={styles.summaryTop}>
-            <View>
-              <Text style={styles.summaryLabel}>相距</Text>
-              <Text style={styles.distanceText}>{formatDistance(distance)}</Text>
-            </View>
-            <View style={styles.summaryRight}>
-              <Text style={styles.partnerName}>{partner?.display_name ?? "未配对"}</Text>
-              <Text style={styles.summaryMeta}>
-                {visiblePartnerLocation ? `${formatTime(visiblePartnerLocation.received_at)} 更新` : "暂无位置"}
-              </Text>
-            </View>
-          </View>
-          <View style={styles.quickRow}>
-            {quickStatuses.map((item, index) => (
-              <PillButton
-                key={item.key}
-                label={item.label}
-                onPress={() => sendQuickStatus(item.key, item.label)}
-                style={styles.quickButton}
-                tone={index === 0 ? "primary" : index === 1 ? "ghost" : "mint"}
-              />
-            ))}
-          </View>
-        </Card>
-
-        <View style={styles.sideActions}>
-          <Pressable onPress={() => Linking.openSettings()} style={styles.roundAction}>
-            <Text style={styles.roundActionText}>⚙</Text>
-          </Pressable>
-          <Pressable onPress={saveMemoryHere} style={styles.roundAction}>
-            <Text style={styles.roundActionText}>＋</Text>
-          </Pressable>
-          <Pressable
-            onPress={() =>
-              sendQuickStatus("sos", "SOS：我需要帮助，请查看我的位置并联系我。")
+        <Animated.View
+          pointerEvents={chromeCollapsed ? "none" : "auto"}
+          style={[
+            styles.topChrome,
+            {
+              opacity: chromeProgress,
+              transform: [{ translateY: topChromeTranslateY }]
             }
-            style={[styles.roundAction, styles.sosAction]}
-          >
-            <Text style={styles.sosText}>SOS</Text>
-          </Pressable>
-        </View>
+          ]}
+        >
+          <AppHeader
+            left={<IconBubble icon={user.display_name.slice(0, 1).toUpperCase()} size={38} />}
+            right={<StatusPill label={socketLabel} tone={socketState === "open" ? "mint" : "plain"} />}
+            subtitle={status}
+            title="实时位置"
+          />
 
-        <View style={styles.bottomPanel}>
+          <Card style={styles.summaryCard}>
+            <View style={styles.summaryTop}>
+              <View>
+                <Text style={styles.summaryLabel}>相距</Text>
+                <Text style={styles.distanceText}>{formatDistance(distance)}</Text>
+              </View>
+              <View style={styles.summaryRight}>
+                <Text style={styles.partnerName}>{partner?.display_name ?? "未配对"}</Text>
+                <Text style={styles.summaryMeta}>
+                  {visiblePartnerLocation ? `${formatTime(visiblePartnerLocation.received_at)} 更新` : "暂无位置"}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.quickRow}>
+              {quickStatuses.map((item, index) => (
+                <PillButton
+                  key={item.key}
+                  label={item.label}
+                  onPress={() => sendQuickStatus(item.key, item.label)}
+                  style={styles.quickButton}
+                  tone={index === 0 ? "primary" : index === 1 ? "ghost" : "mint"}
+                />
+              ))}
+            </View>
+          </Card>
+        </Animated.View>
+
+        <Animated.View
+          pointerEvents={chromeCollapsed ? "none" : "auto"}
+          style={[
+            styles.bottomPanel,
+            {
+              opacity: chromeProgress,
+              transform: [{ translateY: bottomChromeTranslateY }]
+            }
+          ]}
+        >
           <Card style={styles.infoPanel}>
             <View style={styles.sharingRow}>
               <View>
@@ -459,7 +503,7 @@ export function TrackerScreen({
               <StatTile label="记忆点" value={`${memoryPoints.length} 个`} />
             </View>
           </Card>
-        </View>
+        </Animated.View>
       </SafeScreen>
     </View>
   );
@@ -487,6 +531,7 @@ const styles = StyleSheet.create({
     flex: 1,
     pointerEvents: "box-none"
   },
+  topChrome: {},
   summaryCard: {
     margin: spacing.md,
     gap: spacing.md
@@ -530,34 +575,6 @@ const styles = StyleSheet.create({
     minHeight: 38,
     borderRadius: radius.full,
     paddingHorizontal: spacing.sm
-  },
-  sideActions: {
-    position: "absolute",
-    right: spacing.md,
-    bottom: 290,
-    gap: spacing.sm
-  },
-  roundAction: {
-    width: 48,
-    height: 48,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 24,
-    backgroundColor: "rgba(255,255,255,0.96)",
-    ...shadows.card
-  },
-  roundActionText: {
-    color: colors.primary,
-    fontSize: 20,
-    fontWeight: "800"
-  },
-  sosAction: {
-    backgroundColor: colors.danger
-  },
-  sosText: {
-    color: colors.surface,
-    fontSize: 13,
-    fontWeight: "800"
   },
   bottomPanel: {
     position: "absolute",

@@ -20,7 +20,10 @@ declare module "react-native-amap3d" {
 
   export type MapViewProps = ViewProps & {
     initialCameraPosition?: CameraPosition;
+    onCameraIdle?: () => void;
+    onCameraMove?: () => void;
     onLoad?: () => void;
+    onPress?: () => void;
     children?: ReactNode;
   };
 

@@ -10,6 +10,7 @@ import type {
   LocationState,
   MemoryPoint,
   PairingInvite,
+  PairingRequest,
   PairingStatus,
   SharingSettings,
   User,
@@ -196,6 +197,33 @@ export function acceptPairingInvite(code: string) {
   return request<PairingStatus>("/pairing/accept", {
     method: "POST",
     body: JSON.stringify({ code })
+  });
+}
+
+export function submitPairingRequest(code: string) {
+  return request<PairingRequest>("/pairing/requests", {
+    method: "POST",
+    body: JSON.stringify({ code })
+  });
+}
+
+export function listIncomingPairingRequests() {
+  return request<PairingRequest[]>("/pairing/requests/incoming");
+}
+
+export function listOutgoingPairingRequests() {
+  return request<PairingRequest[]>("/pairing/requests/outgoing");
+}
+
+export function approvePairingRequest(requestId: string) {
+  return request<PairingStatus>(`/pairing/requests/${requestId}/approve`, {
+    method: "POST"
+  });
+}
+
+export function rejectPairingRequest(requestId: string) {
+  return request<PairingRequest>(`/pairing/requests/${requestId}/reject`, {
+    method: "POST"
   });
 }
 

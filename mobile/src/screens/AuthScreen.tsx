@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import {
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -40,6 +41,7 @@ type AuthMode = "login" | "register" | "forgot";
 type LoginMethod = "sms" | "password";
 
 export function AuthScreen({ error, onAuthenticated }: Props) {
+  const scrollRef = useRef<ScrollView | null>(null);
   const [mode, setMode] = useState<AuthMode>("login");
   const [loginMethod, setLoginMethod] = useState<LoginMethod>("sms");
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -49,6 +51,7 @@ export function AuthScreen({ error, onAuthenticated }: Props) {
   const [cooldown, setCooldown] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
 
   useEffect(() => {
     if (cooldown <= 0) {
@@ -57,6 +60,24 @@ export function AuthScreen({ error, onAuthenticated }: Props) {
     const timer = setTimeout(() => setCooldown((value) => Math.max(0, value - 1)), 1000);
     return () => clearTimeout(timer);
   }, [cooldown]);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const showSub = Keyboard.addListener(showEvent, () => setKeyboardVisible(true));
+    const hideSub = Keyboard.addListener(hideEvent, () => setKeyboardVisible(false));
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  const scrollToFocusedField = () => {
+    setTimeout(() => {
+      scrollRef.current?.scrollToEnd({ animated: true });
+    }, Platform.OS === "android" ? 180 : 80);
+  };
 
   const smsPurpose: SmsPurpose = useMemo(() => {
     if (mode === "register") {
@@ -172,11 +193,22 @@ export function AuthScreen({ error, onAuthenticated }: Props) {
   return (
     <SafeScreen style={styles.screen}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboard}
       >
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <View style={styles.brand}>
+        <ScrollView
+          ref={scrollRef}
+          automaticallyAdjustKeyboardInsets
+          contentContainerStyle={[styles.content, keyboardVisible && styles.contentKeyboardOpen]}
+          keyboardDismissMode="interactive"
+          keyboardShouldPersistTaps="handled"
+          onContentSizeChange={() => {
+            if (keyboardVisible) {
+              scrollToFocusedField();
+            }
+          }}
+        >
+          <View style={[styles.brand, keyboardVisible && styles.brandCompact]}>
             <LogoMark size={76} />
             <BrandWordmark />
           </View>
@@ -212,6 +244,7 @@ export function AuthScreen({ error, onAuthenticated }: Props) {
                 <Field label="昵称">
                   <TextInput
                     onChangeText={setDisplayName}
+                    onFocus={scrollToFocusedField}
                     placeholder="另一半看到的名字"
                     placeholderTextColor={colors.tertiaryText}
                     style={styles.input}
@@ -227,6 +260,7 @@ export function AuthScreen({ error, onAuthenticated }: Props) {
                   <TextInput
                     keyboardType="phone-pad"
                     onChangeText={setPhoneNumber}
+                    onFocus={scrollToFocusedField}
                     placeholder="请输入手机号"
                     placeholderTextColor={colors.tertiaryText}
                     style={styles.phoneInput}
@@ -250,6 +284,7 @@ export function AuthScreen({ error, onAuthenticated }: Props) {
                     keyboardType="number-pad"
                     maxLength={8}
                     onChangeText={setCode}
+                    onFocus={scrollToFocusedField}
                     placeholder="6 位验证码"
                     placeholderTextColor={colors.tertiaryText}
                     style={styles.input}
@@ -272,6 +307,7 @@ export function AuthScreen({ error, onAuthenticated }: Props) {
                   <TextInput
                     maxLength={128}
                     onChangeText={setPassword}
+                    onFocus={scrollToFocusedField}
                     placeholder="至少 8 位"
                     placeholderTextColor={colors.tertiaryText}
                     secureTextEntry
@@ -344,10 +380,19 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     gap: spacing.lg
   },
+  contentKeyboardOpen: {
+    justifyContent: "flex-start",
+    paddingTop: spacing.md,
+    paddingBottom: 180
+  },
   brand: {
     alignItems: "center",
     gap: spacing.md,
     marginBottom: spacing.sm
+  },
+  brandCompact: {
+    transform: [{ scale: 0.82 }],
+    marginBottom: -spacing.sm
   },
   panel: {
     gap: spacing.md,
