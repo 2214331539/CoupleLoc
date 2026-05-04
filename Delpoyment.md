@@ -215,8 +215,10 @@
 
 
 ## 更新工作流
+
+  记得配置问题
   ssh root@121.196.165.152
-  cd /opt/coupleloc/server
+  cd /pp/coupleloc/server
   git pull
   source .venv/bin/activate
   pip install -e .
@@ -227,7 +229,7 @@
     测试：
 
   curl http://127.0.0.1:8000/health
-  curl http://121.196.165.152/health
+  curl http://121.196.165.152:8001/health
 
   
   看日志：
