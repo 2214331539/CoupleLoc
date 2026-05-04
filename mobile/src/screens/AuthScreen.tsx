@@ -75,8 +75,11 @@ export function AuthScreen({ error, onAuthenticated }: Props) {
 
   const scrollToFocusedField = () => {
     setTimeout(() => {
-      scrollRef.current?.scrollToEnd({ animated: true });
-    }, Platform.OS === "android" ? 180 : 80);
+      scrollRef.current?.scrollTo({
+        y: mode === "register" || mode === "forgot" ? 110 : 64,
+        animated: true
+      });
+    }, Platform.OS === "android" ? 140 : 80);
   };
 
   const smsPurpose: SmsPurpose = useMemo(() => {
@@ -202,11 +205,6 @@ export function AuthScreen({ error, onAuthenticated }: Props) {
           contentContainerStyle={[styles.content, keyboardVisible && styles.contentKeyboardOpen]}
           keyboardDismissMode="interactive"
           keyboardShouldPersistTaps="handled"
-          onContentSizeChange={() => {
-            if (keyboardVisible) {
-              scrollToFocusedField();
-            }
-          }}
         >
           <View style={[styles.brand, keyboardVisible && styles.brandCompact]}>
             <LogoMark size={76} />
@@ -381,9 +379,9 @@ const styles = StyleSheet.create({
     gap: spacing.lg
   },
   contentKeyboardOpen: {
-    justifyContent: "flex-start",
-    paddingTop: spacing.md,
-    paddingBottom: 180
+    justifyContent: "center",
+    paddingTop: spacing.sm,
+    paddingBottom: 104
   },
   brand: {
     alignItems: "center",
@@ -391,8 +389,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm
   },
   brandCompact: {
-    transform: [{ scale: 0.82 }],
-    marginBottom: -spacing.sm
+    transform: [{ scale: 0.92 }],
+    marginBottom: 0
   },
   panel: {
     gap: spacing.md,

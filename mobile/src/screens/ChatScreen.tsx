@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   FlatList,
   KeyboardAvoidingView,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   Platform,
   Pressable,
   StyleSheet,
@@ -20,6 +22,7 @@ type Props = {
   user: User;
   partner: Partner | null;
   token: string;
+  active: boolean;
 };
 
 const quickStatuses = [
@@ -28,19 +31,42 @@ const quickStatuses = [
   { key: "arrived_safe", label: "平安到达", tone: "mint" as const },
 ];
 
-export function ChatScreen({ user, partner, token }: Props) {
+export function ChatScreen({ user, partner, token, active }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [text, setText] = useState("");
   const [status, setStatus] = useState("正在连接");
+  const [listReady, setListReady] = useState(false);
   const listRef = useRef<FlatList<ChatMessage>>(null);
+  const activeRef = useRef(active);
+  const initialPositionedRef = useRef(false);
+  const nearBottomRef = useRef(true);
+  const pendingScrollToEndRef = useRef(false);
+
+  useEffect(() => {
+    activeRef.current = active;
+  }, [active]);
 
   useEffect(() => {
     listChatMessages()
       .then((items) => {
         setMessages(items);
+        initialPositionedRef.current = items.length === 0;
+        setListReady(items.length === 0);
+        if (items.length) {
+          setTimeout(() => {
+            if (!initialPositionedRef.current) {
+              initialPositionedRef.current = true;
+              listRef.current?.scrollToEnd({ animated: false });
+              setListReady(true);
+            }
+          }, 250);
+        }
         setStatus("在线");
       })
-      .catch((err) => setStatus(err instanceof Error ? err.message : "消息加载失败"));
+      .catch((err) => {
+        setListReady(true);
+        setStatus(err instanceof Error ? err.message : "消息加载失败");
+      });
   }, []);
 
   useEffect(() => {
@@ -50,11 +76,15 @@ export function ChatScreen({ user, partner, token }: Props) {
       try {
         const payload = JSON.parse(event.data) as RealtimeEvent;
         if (payload.type === "chat.message_created") {
-          setMessages((items) =>
-            items.some((item) => item.id === payload.message.id)
-              ? items
-              : [...items, payload.message]
-          );
+          setMessages((items) => {
+            if (items.some((item) => item.id === payload.message.id)) {
+              return items;
+            }
+            if (activeRef.current && nearBottomRef.current) {
+              pendingScrollToEndRef.current = true;
+            }
+            return [...items, payload.message];
+          });
           setStatus("刚收到新消息");
         }
         if (payload.type === "battery.low") {
@@ -77,16 +107,34 @@ export function ChatScreen({ user, partner, token }: Props) {
     };
   }, [token]);
 
-  useEffect(() => {
-    if (messages.length) {
-      setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
-    }
-  }, [messages.length]);
-
   const orderedMessages = useMemo(
     () => [...messages].sort((a, b) => +new Date(a.created_at) - +new Date(b.created_at)),
     [messages]
   );
+
+  const handleContentSizeChange = () => {
+    if (!initialPositionedRef.current && orderedMessages.length) {
+      initialPositionedRef.current = true;
+      requestAnimationFrame(() => {
+        listRef.current?.scrollToEnd({ animated: false });
+        setListReady(true);
+      });
+      return;
+    }
+
+    if (pendingScrollToEndRef.current) {
+      pendingScrollToEndRef.current = false;
+      requestAnimationFrame(() => {
+        listRef.current?.scrollToEnd({ animated: activeRef.current });
+      });
+    }
+  };
+
+  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+    nearBottomRef.current =
+      contentOffset.y + layoutMeasurement.height >= contentSize.height - 96;
+  };
 
   const send = async (body = text.trim(), statusKey?: string) => {
     if (!body) {
@@ -99,6 +147,7 @@ export function ChatScreen({ user, partner, token }: Props) {
         body,
         status_key: statusKey ?? null
       });
+      pendingScrollToEndRef.current = true;
       setMessages((items) => [...items, message]);
       setStatus("已发送");
     } catch (err) {
@@ -135,6 +184,10 @@ export function ChatScreen({ user, partner, token }: Props) {
           renderItem={({ item }) => (
             <MessageBubble isMine={item.sender_user_id === user.id} message={item} />
           )}
+          onContentSizeChange={handleContentSizeChange}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
+          style={!listReady && styles.messageListHidden}
         />
 
         <View style={styles.composerWrap}>
@@ -201,6 +254,9 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     gap: spacing.md,
     paddingBottom: spacing.xl
+  },
+  messageListHidden: {
+    opacity: 0
   },
   bubbleWrap: {
     gap: spacing.xs

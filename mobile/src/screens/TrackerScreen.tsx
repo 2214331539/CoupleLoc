@@ -107,14 +107,43 @@ function distanceKm(a: LocationSnapshot | null, b: LocationSnapshot | null) {
   return earthRadiusKm * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
 }
 
-function formatDistance(value: number | null) {
-  if (value === null) {
-    return "已隐藏";
-  }
+function formatDistance(value: number) {
   if (value < 1) {
     return "< 1 km";
   }
   return `${Math.round(value)} km`;
+}
+
+function getDistanceLabel({
+  canShowDistance,
+  isPaired,
+  myLocation,
+  partnerLocation,
+  partnerSharing,
+}: {
+  canShowDistance: boolean;
+  isPaired: boolean;
+  myLocation: LocationSnapshot | null;
+  partnerLocation: LocationSnapshot | null;
+  partnerSharing: SharingSettings | null;
+}) {
+  if (!canShowDistance) {
+    return "已隐藏";
+  }
+  if (!isPaired) {
+    return "--";
+  }
+  if (!myLocation) {
+    return "定位中";
+  }
+  if (partnerSharing?.enabled === false) {
+    return "对方暂停";
+  }
+  if (!partnerLocation) {
+    return "待更新";
+  }
+  const distance = distanceKm(myLocation, partnerLocation);
+  return distance === null ? "待更新" : formatDistance(distance);
 }
 
 export function TrackerScreen({
@@ -146,9 +175,13 @@ export function TrackerScreen({
     () => buildCameraPosition(myLocation, visiblePartnerLocation),
     [myLocation, visiblePartnerLocation]
   );
-  const distance = sharing.share_distance
-    ? distanceKm(myLocation, visiblePartnerLocation)
-    : null;
+  const distanceLabel = getDistanceLabel({
+    canShowDistance: sharing.share_distance,
+    isPaired: pairing.paired,
+    myLocation,
+    partnerLocation: visiblePartnerLocation,
+    partnerSharing
+  });
   const topChromeTranslateY = chromeProgress.interpolate({
     inputRange: [0, 1],
     outputRange: [-190, 0]
@@ -165,24 +198,42 @@ export function TrackerScreen({
     }
   };
 
-  const collapseMapChrome = () => {
+  const restoreMapChrome = () => {
+    clearChromeRestoreTimer();
+    setChromeCollapsed(false);
+  };
+
+  const collapseMapChrome = (autoRestore = true) => {
     setChromeCollapsed(true);
     clearChromeRestoreTimer();
-    chromeRestoreTimer.current = setTimeout(() => {
-      setChromeCollapsed(false);
-      chromeRestoreTimer.current = null;
-    }, 5_000);
+    if (autoRestore) {
+      chromeRestoreTimer.current = setTimeout(() => {
+        setChromeCollapsed(false);
+        chromeRestoreTimer.current = null;
+      }, 5_000);
+    }
   };
 
   const markProgrammaticCameraMove = () => {
     ignoreCameraMoveUntil.current = Date.now() + 700;
   };
 
-  const handleMapInteraction = () => {
+  const handleMapGesture = () => {
     if (Date.now() < ignoreCameraMoveUntil.current) {
       return;
     }
-    collapseMapChrome();
+    collapseMapChrome(true);
+  };
+
+  const handleMapPress = () => {
+    if (Date.now() < ignoreCameraMoveUntil.current) {
+      return;
+    }
+    if (chromeCollapsed) {
+      restoreMapChrome();
+      return;
+    }
+    collapseMapChrome(false);
   };
 
   useEffect(() => {
@@ -379,13 +430,13 @@ export function TrackerScreen({
           ref={mapRef}
           style={styles.map}
           initialCameraPosition={cameraPosition}
-          onCameraIdle={handleMapInteraction}
-          onCameraMove={handleMapInteraction}
+          onCameraIdle={handleMapGesture}
+          onCameraMove={handleMapGesture}
           onLoad={() => {
             markProgrammaticCameraMove();
             mapRef.current?.moveCamera(cameraPosition, 100);
           }}
-          onPress={handleMapInteraction}
+          onPress={handleMapPress}
         >
           {myLocation ? (
             <Marker onPress={() => setStatus("这是你的最新位置")} position={toMapPoint(myLocation)} />
@@ -432,7 +483,7 @@ export function TrackerScreen({
             <View style={styles.summaryTop}>
               <View>
                 <Text style={styles.summaryLabel}>相距</Text>
-                <Text style={styles.distanceText}>{formatDistance(distance)}</Text>
+                <Text style={styles.distanceText}>{distanceLabel}</Text>
               </View>
               <View style={styles.summaryRight}>
                 <Text style={styles.partnerName}>{partner?.display_name ?? "未配对"}</Text>

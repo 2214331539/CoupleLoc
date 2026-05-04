@@ -31,6 +31,14 @@ const tabs: Array<{ key: TabKey; label: string; icon: string }> = [
 
 export function MainScreen(props: Props) {
   const [activeTab, setActiveTab] = useState<TabKey>(props.pairing.paired ? "map" : "profile");
+  const [chatMounted, setChatMounted] = useState(activeTab === "chat");
+
+  const switchTab = (tab: TabKey) => {
+    if (tab === "chat") {
+      setChatMounted(true);
+    }
+    setActiveTab(tab);
+  };
 
   useEffect(() => {
     if (props.suspended) {
@@ -69,9 +77,17 @@ export function MainScreen(props: Props) {
           <TrackerScreen {...props} suspended={props.suspended} />
         </View>
 
-        {activeTab === "chat" ? (
-          <View style={styles.tabPane}>
-            <ChatScreen token={props.token} user={props.user} partner={props.pairing.partner} />
+        {chatMounted ? (
+          <View
+            pointerEvents={activeTab === "chat" ? "auto" : "none"}
+            style={[styles.tabPane, activeTab !== "chat" && styles.hiddenPane]}
+          >
+            <ChatScreen
+              active={activeTab === "chat"}
+              token={props.token}
+              user={props.user}
+              partner={props.pairing.partner}
+            />
           </View>
         ) : null}
         {activeTab === "calendar" ? (
@@ -101,7 +117,7 @@ export function MainScreen(props: Props) {
             return (
               <Pressable
                 key={tab.key}
-                onPress={() => setActiveTab(tab.key)}
+                onPress={() => switchTab(tab.key)}
                 style={({ pressed }) => [
                   styles.tabButton,
                   active && styles.tabButtonActive,
