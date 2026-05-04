@@ -66,25 +66,27 @@ export function MainScreen(props: Props) {
         ) : null}
       </View>
 
-      <View style={styles.tabBar}>
-        {tabs.map((tab) => {
-          const active = activeTab === tab.key;
-          return (
-            <Pressable
-              key={tab.key}
-              onPress={() => setActiveTab(tab.key)}
-              style={({ pressed }) => [
-                styles.tabButton,
-                active && styles.tabButtonActive,
-                pressed && styles.tabButtonPressed,
-              ]}
-            >
-              <Text style={[styles.tabIcon, active && styles.tabTextActive]}>{tab.icon}</Text>
-              <Text style={[styles.tabText, active && styles.tabTextActive]}>{tab.label}</Text>
-            </Pressable>
-          );
-        })}
-      </View>
+      {props.suspended ? null : (
+        <View style={styles.tabBar}>
+          {tabs.map((tab) => {
+            const active = activeTab === tab.key;
+            return (
+              <Pressable
+                key={tab.key}
+                onPress={() => setActiveTab(tab.key)}
+                style={({ pressed }) => [
+                  styles.tabButton,
+                  active && styles.tabButtonActive,
+                  pressed && styles.tabButtonPressed,
+                ]}
+              >
+                <Text style={[styles.tabIcon, active && styles.tabTextActive]}>{tab.icon}</Text>
+                <Text style={[styles.tabText, active && styles.tabTextActive]}>{tab.label}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      )}
     </View>
   );
 }

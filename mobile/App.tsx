@@ -153,6 +153,8 @@ const styles = StyleSheet.create({
   },
   authOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: colors.background
+    backgroundColor: colors.background,
+    elevation: 24,
+    zIndex: 24
   }
 });

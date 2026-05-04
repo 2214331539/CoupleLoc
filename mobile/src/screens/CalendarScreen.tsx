@@ -1,5 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  FlatList,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 
 import {
   buildLocationWebSocketUrl,
@@ -32,6 +41,9 @@ const timeOptions = Array.from({ length: 34 }, (_, index) => {
   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
 });
 const weekDays = ["日", "一", "二", "三", "四", "五", "六"];
+const dateWheelItemHeight = 50;
+const dateWheelVisibleItems = 5;
+const dateWheelPadding = dateWheelItemHeight * 2;
 
 function monthTitle(date: Date) {
   return `${date.getFullYear()}年 ${date.getMonth() + 1}月`;
@@ -52,18 +64,34 @@ function makeStartAt(date: Date, time: string) {
   return value.toISOString();
 }
 
-function shortDateLabel(date: Date) {
-  return `${date.getMonth() + 1}/${date.getDate()}`;
+function dateOnly(value: Date) {
+  const date = new Date(value);
+  date.setHours(0, 0, 0, 0);
+  return date;
 }
 
-function relativeDateLabel(date: Date, index: number) {
-  if (index === 0) {
+function dayDiff(date: Date) {
+  const today = dateOnly(new Date());
+  const target = dateOnly(date);
+  return Math.round((+target - +today) / (24 * 60 * 60 * 1000));
+}
+
+function relativeDateLabel(date: Date) {
+  const diff = dayDiff(date);
+  if (diff === 0) {
     return "今天";
   }
-  if (index === 1) {
+  if (diff === 1) {
     return "明天";
   }
+  if (diff === -1) {
+    return "昨天";
+  }
   return weekDays[date.getDay()];
+}
+
+function fullDateLabel(date: Date) {
+  return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日 周${weekDays[date.getDay()]}`;
 }
 
 function eventTone(event: CalendarEvent) {
@@ -78,13 +106,16 @@ function eventTone(event: CalendarEvent) {
 }
 
 export function CalendarScreen({ pairing, token }: Props) {
+  const dateListRef = useRef<FlatList<Date> | null>(null);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
   const [selectedDate, setSelectedDate] = useState(() => new Date());
+  const [pendingDate, setPendingDate] = useState(() => new Date());
   const [selectedTime, setSelectedTime] = useState("19:00");
   const [status, setStatus] = useState("正在同步日历");
   const [showForm, setShowForm] = useState(false);
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [month, setMonth] = useState(() => new Date());
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -166,14 +197,42 @@ export function CalendarScreen({ pairing, token }: Props) {
   );
 
   const dateOptions = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return Array.from({ length: 30 }, (_, index) => {
+    const today = dateOnly(new Date());
+    today.setDate(today.getDate() - 30);
+    return Array.from({ length: 211 }, (_, index) => {
       const value = new Date(today);
       value.setDate(today.getDate() + index);
       return value;
     });
   }, []);
+
+  const getDateOptionIndex = (date: Date) => {
+    const index = dateOptions.findIndex((item) => sameDate(item, date));
+    return index >= 0 ? index : 30;
+  };
+
+  const updatePendingDateFromOffset = (offsetY: number) => {
+    const index = Math.max(
+      0,
+      Math.min(dateOptions.length - 1, Math.round(offsetY / dateWheelItemHeight))
+    );
+    const date = dateOptions[index];
+    if (date) {
+      setPendingDate(date);
+    }
+  };
+
+  const openDatePicker = () => {
+    const index = getDateOptionIndex(selectedDate);
+    setPendingDate(dateOptions[index] ?? selectedDate);
+    setDatePickerOpen(true);
+  };
+
+  const confirmDatePicker = () => {
+    setSelectedDate(pendingDate);
+    setMonth(new Date(pendingDate.getFullYear(), pendingDate.getMonth(), 1));
+    setDatePickerOpen(false);
+  };
 
   const submit = async () => {
     if (!pairing.paired) {
@@ -315,32 +374,13 @@ export function CalendarScreen({ pairing, token }: Props) {
           <Card style={styles.formCard}>
             <View style={styles.formBlock}>
               <Text style={styles.formLabel}>选择日期</Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.dateChipStrip}
-              >
-                {dateOptions.map((date, index) => {
-                  const active = sameDate(date, selectedDate);
-                  return (
-                    <Pressable
-                      key={date.toISOString()}
-                      onPress={() => {
-                        setSelectedDate(date);
-                        setMonth(new Date(date.getFullYear(), date.getMonth(), 1));
-                      }}
-                      style={[styles.dateChip, active && styles.dateChipActive]}
-                    >
-                      <Text style={[styles.dateChipWeek, active && styles.dateChipTextActive]}>
-                        {relativeDateLabel(date, index)}
-                      </Text>
-                      <Text style={[styles.dateChipDate, active && styles.dateChipTextActive]}>
-                        {shortDateLabel(date)}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </ScrollView>
+              <Pressable onPress={openDatePicker} style={styles.dateInputButton}>
+                <View>
+                  <Text style={styles.dateInputLabel}>{relativeDateLabel(selectedDate)}</Text>
+                  <Text style={styles.dateInputText}>{fullDateLabel(selectedDate)}</Text>
+                </View>
+                <Text style={styles.dateInputArrow}>⌄</Text>
+              </Pressable>
             </View>
             <View style={styles.selectedDateBox}>
               <Text style={styles.selectedDateLabel}>已选择</Text>
@@ -407,6 +447,72 @@ export function CalendarScreen({ pairing, token }: Props) {
           )}
         </View>
       </ScrollView>
+
+      <Modal
+        animationType="slide"
+        onRequestClose={() => setDatePickerOpen(false)}
+        onShow={() => {
+          dateListRef.current?.scrollToOffset({
+            animated: false,
+            offset: getDateOptionIndex(pendingDate) * dateWheelItemHeight
+          });
+        }}
+        transparent
+        visible={datePickerOpen}
+      >
+        <View style={styles.sheetRoot}>
+          <Pressable style={styles.sheetBackdrop} onPress={() => setDatePickerOpen(false)} />
+          <View style={styles.sheetCard}>
+            <View style={styles.sheetHandle} />
+            <View style={styles.sheetHeader}>
+              <View>
+                <Text style={styles.sheetTitle}>选择日期</Text>
+                <Text style={styles.sheetSubtitle}>{fullDateLabel(pendingDate)}</Text>
+              </View>
+              <Pressable onPress={() => setDatePickerOpen(false)} style={styles.sheetCloseButton}>
+                <Text style={styles.sheetCloseText}>取消</Text>
+              </Pressable>
+            </View>
+
+            <View style={styles.wheelShell}>
+              <FlatList
+                ref={dateListRef}
+                data={dateOptions}
+                keyExtractor={(item) => item.toISOString()}
+                showsVerticalScrollIndicator={false}
+                snapToInterval={dateWheelItemHeight}
+                decelerationRate="fast"
+                bounces={false}
+                initialScrollIndex={getDateOptionIndex(selectedDate)}
+                getItemLayout={(_, index) => ({
+                  length: dateWheelItemHeight,
+                  offset: dateWheelItemHeight * index,
+                  index
+                })}
+                contentContainerStyle={styles.wheelContent}
+                onMomentumScrollEnd={(event) => updatePendingDateFromOffset(event.nativeEvent.contentOffset.y)}
+                onScrollEndDrag={(event) => updatePendingDateFromOffset(event.nativeEvent.contentOffset.y)}
+                renderItem={({ item }) => {
+                  const active = sameDate(item, pendingDate);
+                  return (
+                    <View style={[styles.wheelRow, active && styles.wheelRowActive]}>
+                      <Text style={[styles.wheelPrimary, active && styles.wheelPrimaryActive]}>
+                        {relativeDateLabel(item)}
+                      </Text>
+                      <Text style={[styles.wheelSecondary, active && styles.wheelSecondaryActive]}>
+                        {fullDateLabel(item)}
+                      </Text>
+                    </View>
+                  );
+                }}
+              />
+              <View pointerEvents="none" style={styles.wheelSelection} />
+            </View>
+
+            <PillButton label="确认日期" onPress={confirmDatePicker} />
+          </View>
+        </View>
+      </Modal>
     </SafeScreen>
   );
 }
@@ -563,38 +669,33 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "800"
   },
-  dateChipStrip: {
-    flexDirection: "row",
-    gap: spacing.sm,
-    paddingRight: spacing.sm
-  },
-  dateChip: {
-    width: 70,
+  dateInputButton: {
     minHeight: 58,
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    borderRadius: radius.lg,
+    justifyContent: "space-between",
+    borderRadius: radius.md,
     backgroundColor: colors.fill,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.line
+    borderColor: colors.line,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm
   },
-  dateChipActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary
-  },
-  dateChipWeek: {
+  dateInputLabel: {
     color: colors.muted,
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "700"
   },
-  dateChipDate: {
+  dateInputText: {
     color: colors.text,
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: "800",
     marginTop: 2
   },
-  dateChipTextActive: {
-    color: colors.surface
+  dateInputArrow: {
+    color: colors.primary,
+    fontSize: 24,
+    fontWeight: "700"
   },
   selectedDateBox: {
     borderRadius: radius.md,
@@ -696,6 +797,108 @@ const styles = StyleSheet.create({
     color: colors.tertiaryText,
     fontSize: 13,
     fontWeight: "600"
+  },
+  sheetRoot: {
+    flex: 1,
+    justifyContent: "flex-end"
+  },
+  sheetBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(17, 24, 39, 0.28)"
+  },
+  sheetCard: {
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    backgroundColor: colors.surface,
+    padding: spacing.lg,
+    paddingBottom: spacing.xl,
+    gap: spacing.lg
+  },
+  sheetHandle: {
+    alignSelf: "center",
+    width: 42,
+    height: 5,
+    borderRadius: radius.full,
+    backgroundColor: colors.line
+  },
+  sheetHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.md
+  },
+  sheetTitle: {
+    color: colors.text,
+    fontSize: 20,
+    fontWeight: "800"
+  },
+  sheetSubtitle: {
+    color: colors.muted,
+    fontSize: 14,
+    fontWeight: "600",
+    marginTop: 3
+  },
+  sheetCloseButton: {
+    minHeight: 36,
+    justifyContent: "center",
+    borderRadius: radius.full,
+    backgroundColor: colors.fill,
+    paddingHorizontal: spacing.md
+  },
+  sheetCloseText: {
+    color: colors.textSoft,
+    fontSize: 14,
+    fontWeight: "700"
+  },
+  wheelShell: {
+    height: dateWheelItemHeight * dateWheelVisibleItems,
+    overflow: "hidden",
+    justifyContent: "center"
+  },
+  wheelContent: {
+    paddingVertical: dateWheelPadding
+  },
+  wheelRow: {
+    height: dateWheelItemHeight,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md
+  },
+  wheelRowActive: {
+    backgroundColor: "rgba(255, 107, 129, 0.08)"
+  },
+  wheelPrimary: {
+    width: 54,
+    color: colors.muted,
+    fontSize: 15,
+    fontWeight: "700"
+  },
+  wheelPrimaryActive: {
+    color: colors.primary
+  },
+  wheelSecondary: {
+    flex: 1,
+    color: colors.textSoft,
+    textAlign: "right",
+    fontSize: 16,
+    fontWeight: "700"
+  },
+  wheelSecondaryActive: {
+    color: colors.text,
+    fontSize: 18,
+    fontWeight: "800"
+  },
+  wheelSelection: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: dateWheelItemHeight * 2,
+    height: dateWheelItemHeight,
+    borderRadius: radius.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.primary
   },
   deleteButton: {
     minHeight: 34,
