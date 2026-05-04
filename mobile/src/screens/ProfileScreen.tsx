@@ -342,8 +342,8 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xl
   },
   title: {
-    color: colors.primaryStrong,
-    fontSize: 32,
+    color: colors.text,
+    fontSize: 28,
     fontWeight: "900"
   },
   subtitle: {
@@ -365,7 +365,7 @@ const styles = StyleSheet.create({
   },
   heart: {
     color: colors.primary,
-    fontSize: 34,
+    fontSize: 26,
     fontWeight: "900"
   },
   codeBox: {
@@ -380,9 +380,9 @@ const styles = StyleSheet.create({
   },
   codeText: {
     color: colors.primaryStrong,
-    fontSize: 30,
+    fontSize: 26,
     fontWeight: "900",
-    letterSpacing: 2
+    letterSpacing: 0
   },
   pairActions: {
     gap: spacing.md
@@ -435,23 +435,23 @@ const styles = StyleSheet.create({
   },
   modeCard: {
     width: "47.7%",
-    minHeight: 134,
+    minHeight: 124,
     alignItems: "center",
     justifyContent: "center",
     gap: spacing.sm,
     borderRadius: radius.lg,
-    backgroundColor: colors.surfaceContainer,
+    backgroundColor: "rgba(255,255,255,0.72)",
     borderWidth: 1,
-    borderColor: "transparent",
+    borderColor: colors.line,
     padding: spacing.md
   },
   modeCardActive: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.surface,
     borderColor: colors.primaryStrong
   },
   modeIcon: {
-    color: colors.primaryDark,
-    fontSize: 28,
+    color: colors.primaryStrong,
+    fontSize: 24,
     fontWeight: "900"
   },
   modeLabel: {
@@ -506,7 +506,7 @@ const styles = StyleSheet.create({
     height: 180,
     overflow: "hidden",
     borderRadius: radius.lg,
-    backgroundColor: "#f6e8df"
+    backgroundColor: colors.surfaceContainer
   },
   mapLineOne: {
     position: "absolute",
@@ -524,7 +524,7 @@ const styles = StyleSheet.create({
     width: 18,
     height: 260,
     transform: [{ rotate: "42deg" }],
-    backgroundColor: "rgba(189,222,254,0.8)"
+    backgroundColor: "rgba(255,255,255,0.78)"
   },
   blurCircle: {
     position: "absolute",
@@ -535,7 +535,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 64,
-    backgroundColor: "rgba(255,181,197,0.42)"
+    backgroundColor: "rgba(255,255,255,0.48)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.9)"
   },
   mapCaption: {
     position: "absolute",
@@ -568,13 +570,12 @@ const styles = StyleSheet.create({
   },
   chevron: {
     color: colors.muted,
-    fontSize: 30
+    fontSize: 24
   },
   safetyCard: {
     gap: spacing.lg,
-    borderStyle: "dashed",
-    borderColor: colors.primarySoft,
-    backgroundColor: "#fff7f9"
+    borderColor: colors.line,
+    backgroundColor: "rgba(255,255,255,0.78)"
   },
   safetyTitle: {
     color: colors.text,
@@ -592,14 +593,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 56,
-    backgroundColor: colors.primary,
-    shadowColor: colors.primary,
-    shadowOpacity: 0.28,
-    shadowRadius: 24,
+    backgroundColor: colors.danger,
+    shadowColor: colors.shadow,
+    shadowOpacity: 0.1,
+    shadowRadius: 18,
     elevation: 4
   },
   sosText: {
-    color: colors.primaryDark,
+    color: colors.surface,
     fontSize: 24,
     fontWeight: "900"
   },

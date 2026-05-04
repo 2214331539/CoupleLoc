@@ -130,11 +130,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: radius.full,
-    backgroundColor: colors.surfaceWarm
+    backgroundColor: colors.surfaceContainer
   },
   backText: {
     color: colors.primaryStrong,
-    fontSize: 28
+    fontSize: 22
   },
   content: {
     flex: 1,
@@ -146,8 +146,8 @@ const styles = StyleSheet.create({
     gap: spacing.sm
   },
   title: {
-    color: colors.primaryStrong,
-    fontSize: 32,
+    color: colors.text,
+    fontSize: 28,
     fontWeight: "900"
   },
   subtitle: {
@@ -174,12 +174,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderRadius: radius.md,
     borderWidth: 8,
-    borderColor: colors.primarySoft,
-    backgroundColor: colors.surfaceWarm
+    borderColor: colors.line,
+    backgroundColor: colors.surfaceContainer
   },
   fakeQrText: {
     color: colors.primaryStrong,
-    fontSize: 42,
+    fontSize: 26,
     fontWeight: "900"
   },
   codePanel: {
@@ -196,9 +196,9 @@ const styles = StyleSheet.create({
   },
   code: {
     color: colors.primaryStrong,
-    fontSize: 34,
+    fontSize: 28,
     fontWeight: "900",
-    letterSpacing: 4
+    letterSpacing: 0
   },
   codeActions: {
     flexDirection: "row",
@@ -232,7 +232,7 @@ const styles = StyleSheet.create({
   },
   chevron: {
     color: colors.muted,
-    fontSize: 32
+    fontSize: 24
   },
   acceptCard: {
     gap: spacing.md
@@ -252,8 +252,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg
   },
   tipCard: {
-    borderColor: colors.primarySoft,
-    backgroundColor: "#fff7fa",
+    borderColor: colors.line,
+    backgroundColor: "rgba(255,255,255,0.78)",
     gap: spacing.sm
   },
   tipTitle: {

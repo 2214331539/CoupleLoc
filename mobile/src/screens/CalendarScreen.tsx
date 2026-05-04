@@ -357,8 +357,8 @@ const styles = StyleSheet.create({
     justifyContent: "space-between"
   },
   monthTitle: {
-    color: colors.primaryStrong,
-    fontSize: 28,
+    color: colors.text,
+    fontSize: 24,
     fontWeight: "900"
   },
   monthButtons: {
@@ -366,12 +366,14 @@ const styles = StyleSheet.create({
     gap: spacing.sm
   },
   monthButton: {
-    width: 42,
-    height: 42,
+    width: 40,
+    height: 40,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 21,
-    backgroundColor: colors.surfaceContainer
+    backgroundColor: "rgba(255,255,255,0.82)",
+    borderWidth: 1,
+    borderColor: colors.line
   },
   monthButtonText: {
     color: colors.text,
@@ -393,22 +395,22 @@ const styles = StyleSheet.create({
   },
   dayCell: {
     width: `${100 / 7}%`,
-    minHeight: 52,
+    minHeight: 50,
     alignItems: "center",
     justifyContent: "center",
     gap: 3,
     borderRadius: radius.md
   },
   dayCellSelected: {
-    backgroundColor: colors.primarySoft
+    backgroundColor: colors.primary
   },
   dayText: {
     color: colors.text,
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "700"
   },
   dayTextSelected: {
-    color: colors.primaryStrong,
+    color: colors.surface,
     fontWeight: "900"
   },
   eventDot: {
@@ -451,7 +453,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     color: colors.text,
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: "900"
   },
   addButton: {
@@ -462,7 +464,7 @@ const styles = StyleSheet.create({
   },
   selectedDateBox: {
     borderRadius: radius.lg,
-    backgroundColor: colors.surfaceWarm,
+    backgroundColor: colors.surfaceContainer,
     padding: spacing.md
   },
   selectedDateLabel: {
@@ -470,7 +472,7 @@ const styles = StyleSheet.create({
     fontWeight: "800"
   },
   selectedDateText: {
-    color: colors.primaryStrong,
+    color: colors.text,
     fontSize: 18,
     fontWeight: "900",
     marginTop: 3
@@ -482,7 +484,9 @@ const styles = StyleSheet.create({
   },
   timeChip: {
     borderRadius: radius.full,
-    backgroundColor: colors.surfaceContainer,
+    backgroundColor: "rgba(255,255,255,0.82)",
+    borderWidth: 1,
+    borderColor: colors.line,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm
   },
@@ -494,13 +498,15 @@ const styles = StyleSheet.create({
     fontWeight: "900"
   },
   timeTextActive: {
-    color: colors.primaryDark
+    color: colors.surface
   },
   input: {
     minHeight: 52,
     borderRadius: radius.lg,
-    backgroundColor: colors.surfaceContainer,
+    backgroundColor: "rgba(255,255,255,0.88)",
     color: colors.text,
+    borderWidth: 1,
+    borderColor: colors.line,
     paddingHorizontal: spacing.lg
   },
   status: {
@@ -540,7 +546,7 @@ const styles = StyleSheet.create({
   eventBadge: {
     overflow: "hidden",
     borderRadius: radius.full,
-    backgroundColor: colors.primarySoft,
+    backgroundColor: colors.surfaceContainer,
     color: colors.primaryStrong,
     paddingHorizontal: spacing.sm,
     paddingVertical: 3,

@@ -102,9 +102,12 @@ const styles = StyleSheet.create({
   tabBar: {
     flexDirection: "row",
     alignItems: "center",
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
-    backgroundColor: "rgba(255,255,255,0.96)",
+    borderTopLeftRadius: radius.lg,
+    borderTopRightRadius: radius.lg,
+    borderWidth: 1,
+    borderBottomWidth: 0,
+    borderColor: "rgba(255,255,255,0.9)",
+    backgroundColor: "rgba(255,255,255,0.82)",
     paddingHorizontal: spacing.md,
     paddingTop: spacing.sm,
     paddingBottom: spacing.md,
@@ -112,14 +115,14 @@ const styles = StyleSheet.create({
   },
   tabButton: {
     flex: 1,
-    minHeight: 64,
+    minHeight: 60,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: radius.lg,
+    borderRadius: radius.md,
     gap: 2
   },
   tabButtonActive: {
-    backgroundColor: colors.surfaceWarm
+    backgroundColor: colors.surface
   },
   tabIcon: {
     color: colors.muted,
@@ -128,11 +131,11 @@ const styles = StyleSheet.create({
   },
   tabText: {
     color: colors.muted,
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: "900",
-    letterSpacing: 1
+    letterSpacing: 0
   },
   tabTextActive: {
-    color: colors.primary
+    color: colors.primaryStrong
   }
 });

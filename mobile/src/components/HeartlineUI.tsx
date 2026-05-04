@@ -134,9 +134,9 @@ export function EmptyState({ title, body }: { title: string; body: string }) {
 const styles = StyleSheet.create({
   logoWrap: {
     overflow: "hidden",
-    backgroundColor: colors.surfaceWarm,
-    borderWidth: 3,
-    borderColor: colors.primarySoft,
+    backgroundColor: "rgba(255,255,255,0.86)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.9)",
     ...shadows.soft
   },
   logoImage: {
@@ -149,21 +149,24 @@ const styles = StyleSheet.create({
     gap: spacing.md
   },
   wordmark: {
-    color: colors.primary,
-    fontSize: 42,
+    color: colors.text,
+    fontSize: 36,
     fontWeight: "900",
-    fontStyle: "italic"
+    letterSpacing: 0
   },
   wordmarkCompact: {
-    fontSize: 28
+    fontSize: 24
   },
   header: {
-    minHeight: 88,
+    minHeight: 82,
     flexDirection: "row",
     alignItems: "center",
-    borderBottomLeftRadius: radius.xl,
-    borderBottomRightRadius: radius.xl,
-    backgroundColor: "rgba(255,255,255,0.94)",
+    borderBottomLeftRadius: radius.lg,
+    borderBottomRightRadius: radius.lg,
+    borderWidth: 1,
+    borderTopWidth: 0,
+    borderColor: "rgba(255,255,255,0.9)",
+    backgroundColor: "rgba(255,255,255,0.78)",
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.md,
     paddingTop: spacing.md,
@@ -182,31 +185,31 @@ const styles = StyleSheet.create({
     alignItems: "center"
   },
   headerTitle: {
-    color: colors.primary,
-    fontSize: 28,
+    color: colors.text,
+    fontSize: 23,
     fontWeight: "900",
-    fontStyle: "italic"
+    letterSpacing: 0
   },
   headerSubtitle: {
-    color: colors.secondary,
+    color: colors.muted,
     fontSize: 12,
-    fontWeight: "700"
+    fontWeight: "800"
   },
   heart: {
     color: colors.primary,
-    fontSize: 34,
+    fontSize: 26,
     fontWeight: "700"
   },
   card: {
-    borderRadius: radius.xl,
+    borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: "rgba(214,194,196,0.6)",
-    backgroundColor: "rgba(255,255,255,0.92)",
+    borderColor: "rgba(255,255,255,0.86)",
+    backgroundColor: "rgba(255,255,255,0.74)",
     padding: spacing.lg,
     ...shadows.card
   },
   pillButton: {
-    minHeight: 52,
+    minHeight: 50,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: radius.full,
@@ -215,20 +218,20 @@ const styles = StyleSheet.create({
     ...shadows.soft
   },
   pillSecondary: {
-    backgroundColor: colors.secondarySoft
+    backgroundColor: colors.secondary
   },
   pillGhost: {
     borderWidth: 1,
-    borderColor: colors.outline,
-    backgroundColor: colors.surface
+    borderColor: colors.line,
+    backgroundColor: "rgba(255,255,255,0.82)"
   },
   pillDanger: {
     borderWidth: 1,
     borderColor: colors.dangerSoft,
-    backgroundColor: "#fff7f7"
+    backgroundColor: "rgba(255,255,255,0.82)"
   },
   pillMint: {
-    backgroundColor: colors.tertiarySoft
+    backgroundColor: colors.tertiary
   },
   pressed: {
     transform: [{ scale: 0.98 }],
@@ -236,11 +239,11 @@ const styles = StyleSheet.create({
   },
   pillText: {
     color: colors.surface,
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "900"
   },
   pillSecondaryText: {
-    color: colors.secondary
+    color: colors.surface
   },
   pillGhostText: {
     color: colors.primaryStrong
@@ -249,11 +252,13 @@ const styles = StyleSheet.create({
     color: colors.danger
   },
   pillMintText: {
-    color: colors.tertiary
+    color: colors.surface
   },
   iconBubble: {
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.85)",
     backgroundColor: colors.primarySoft
   },
   iconSecondary: {
@@ -263,7 +268,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.tertiarySoft
   },
   iconPlain: {
-    backgroundColor: colors.surfaceContainer
+    backgroundColor: "rgba(255,255,255,0.82)"
   },
   iconDanger: {
     backgroundColor: colors.dangerSoft
@@ -274,7 +279,7 @@ const styles = StyleSheet.create({
     fontWeight: "900"
   },
   fieldLabel: {
-    color: colors.muted,
+    color: colors.textSoft,
     fontSize: 13,
     fontWeight: "800",
     paddingLeft: spacing.md

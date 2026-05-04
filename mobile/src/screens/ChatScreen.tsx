@@ -190,9 +190,9 @@ function MessageBubble({ message, isMine }: { message: ChatMessage; isMine: bool
     <View style={[styles.bubbleWrap, isMine ? styles.mineWrap : styles.partnerWrap]}>
       <View style={[styles.bubble, isMine ? styles.mineBubble : styles.partnerBubble]}>
         {message.message_type === "quick_status" ? (
-          <Text style={styles.quickMeta}>快捷状态</Text>
+          <Text style={[styles.quickMeta, !isMine && styles.partnerQuickMeta]}>快捷状态</Text>
         ) : null}
-        <Text style={styles.messageText}>{message.body}</Text>
+        <Text style={[styles.messageText, isMine && styles.mineMessageText]}>{message.body}</Text>
       </View>
       <Text style={styles.timeText}>
         {new Date(message.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
@@ -211,7 +211,7 @@ const styles = StyleSheet.create({
   },
   menu: {
     color: colors.muted,
-    fontSize: 32,
+    fontSize: 24,
     fontWeight: "900"
   },
   messageList: {
@@ -253,18 +253,26 @@ const styles = StyleSheet.create({
   },
   partnerBubble: {
     borderTopLeftRadius: radius.sm,
-    backgroundColor: colors.secondarySoft
+    backgroundColor: "rgba(255,255,255,0.86)",
+    borderWidth: 1,
+    borderColor: colors.line
   },
   quickMeta: {
-    color: colors.primaryDark,
+    color: colors.surface,
     fontSize: 12,
     fontWeight: "900",
     marginBottom: spacing.xs
+  },
+  partnerQuickMeta: {
+    color: colors.primaryStrong
   },
   messageText: {
     color: colors.textSoft,
     fontSize: 17,
     lineHeight: 26
+  },
+  mineMessageText: {
+    color: colors.surface
   },
   timeText: {
     color: colors.muted,
@@ -290,12 +298,15 @@ const styles = StyleSheet.create({
   },
   chevron: {
     color: colors.muted,
-    fontSize: 30
+    fontSize: 24
   },
   composerWrap: {
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
-    backgroundColor: "rgba(255,255,255,0.95)",
+    borderTopLeftRadius: radius.lg,
+    borderTopRightRadius: radius.lg,
+    borderWidth: 1,
+    borderBottomWidth: 0,
+    borderColor: "rgba(255,255,255,0.9)",
+    backgroundColor: "rgba(255,255,255,0.82)",
     padding: spacing.lg,
     gap: spacing.md
   },
@@ -321,16 +332,18 @@ const styles = StyleSheet.create({
   },
   plusText: {
     color: colors.muted,
-    fontSize: 30
+    fontSize: 24
   },
   input: {
     flex: 1,
-    minHeight: 58,
+    minHeight: 54,
     borderRadius: radius.full,
-    backgroundColor: colors.surfaceContainer,
+    backgroundColor: colors.surface,
     color: colors.text,
     fontSize: 16,
-    paddingHorizontal: spacing.lg
+    paddingHorizontal: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.line
   },
   sendButton: {
     width: 58,
@@ -341,8 +354,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary
   },
   sendText: {
-    color: colors.primaryDark,
-    fontSize: 28,
+    color: colors.surface,
+    fontSize: 24,
     fontWeight: "900"
   }
 });

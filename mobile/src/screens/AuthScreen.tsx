@@ -344,20 +344,20 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: "center",
     padding: spacing.lg,
-    gap: spacing.lg
+    gap: spacing.md
   },
   hero: {
     alignItems: "center",
-    gap: spacing.sm
+    gap: spacing.xs
   },
   subtitle: {
-    color: colors.text,
-    fontSize: 18,
-    fontWeight: "600"
+    color: colors.muted,
+    fontSize: 15,
+    fontWeight: "700"
   },
   card: {
     gap: spacing.lg,
-    padding: spacing.xl
+    padding: spacing.lg
   },
   tabs: {
     flexDirection: "row",
@@ -370,7 +370,7 @@ const styles = StyleSheet.create({
   },
   tabText: {
     color: colors.muted,
-    fontSize: 30,
+    fontSize: 26,
     fontWeight: "900"
   },
   tabTextActive: {
@@ -386,8 +386,8 @@ const styles = StyleSheet.create({
     gap: spacing.xs
   },
   forgotTitle: {
-    color: colors.primaryStrong,
-    fontSize: 24,
+    color: colors.text,
+    fontSize: 22,
     fontWeight: "900"
   },
   forgotSubtitle: {
@@ -396,7 +396,7 @@ const styles = StyleSheet.create({
   methodSwitch: {
     flexDirection: "row",
     borderRadius: radius.full,
-    backgroundColor: colors.surfaceContainerHigh,
+    backgroundColor: colors.surfaceContainer,
     padding: 5
   },
   methodButton: {
@@ -437,14 +437,13 @@ const styles = StyleSheet.create({
     fontWeight: "900"
   },
   phoneInputRow: {
-    minHeight: 64,
+    minHeight: 58,
     flexDirection: "row",
     alignItems: "center",
-    borderRadius: radius.xl,
-    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    backgroundColor: "rgba(255,255,255,0.88)",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.9)",
-    ...shadows.card
+    borderColor: colors.line
   },
   countryCode: {
     color: colors.text,
@@ -464,15 +463,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg
   },
   input: {
-    minHeight: 64,
-    borderRadius: radius.xl,
-    backgroundColor: colors.surface,
+    minHeight: 58,
+    borderRadius: radius.lg,
+    backgroundColor: "rgba(255,255,255,0.88)",
     color: colors.text,
-    fontSize: 17,
+    fontSize: 16,
     paddingHorizontal: spacing.lg,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.9)",
-    ...shadows.card
+    borderColor: colors.line
   },
   notice: {
     color: colors.primaryStrong,

@@ -465,13 +465,14 @@ const styles = StyleSheet.create({
   },
   heart: {
     color: colors.primary,
-    fontSize: 34,
+    fontSize: 26,
     fontWeight: "900"
   },
   summaryCard: {
     margin: spacing.lg,
     marginTop: spacing.lg,
-    gap: spacing.md
+    gap: spacing.md,
+    backgroundColor: "rgba(255,255,255,0.78)"
   },
   summaryTop: {
     flexDirection: "row",
@@ -485,7 +486,7 @@ const styles = StyleSheet.create({
   },
   distanceText: {
     color: colors.primaryStrong,
-    fontSize: 32,
+    fontSize: 30,
     fontWeight: "900",
     marginTop: 4
   },
@@ -494,7 +495,7 @@ const styles = StyleSheet.create({
   },
   weatherText: {
     color: colors.secondary,
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "900",
     marginTop: 8
   },
@@ -515,7 +516,7 @@ const styles = StyleSheet.create({
   },
   daysPill: {
     borderRadius: radius.full,
-    backgroundColor: colors.primarySoft,
+    backgroundColor: colors.surfaceContainer,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm
   },
@@ -535,19 +536,21 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 32,
-    backgroundColor: colors.surface,
+    backgroundColor: "rgba(255,255,255,0.84)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.9)",
     ...shadows.card
   },
   roundActionText: {
     color: colors.primaryStrong,
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: "900"
   },
   sosAction: {
-    backgroundColor: colors.primarySoft
+    backgroundColor: colors.danger
   },
   sosText: {
-    color: colors.danger,
+    color: colors.surface,
     fontWeight: "900"
   },
   bottomPanel: {
@@ -585,7 +588,7 @@ const styles = StyleSheet.create({
     minHeight: 58,
     justifyContent: "center",
     borderRadius: radius.lg,
-    backgroundColor: colors.surfaceWarm,
+    backgroundColor: colors.surfaceContainer,
     paddingHorizontal: spacing.md
   },
   label: {

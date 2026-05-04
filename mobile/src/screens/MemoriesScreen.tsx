@@ -157,7 +157,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background
   },
   content: {
-    padding: 16,
+    padding: spacing.lg,
     gap: spacing.md
   },
   header: {
@@ -165,8 +165,8 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.text,
-    fontSize: 28,
-    fontWeight: "800"
+    fontSize: 24,
+    fontWeight: "900"
   },
   subtitle: {
     color: colors.muted
@@ -175,23 +175,23 @@ const styles = StyleSheet.create({
     gap: spacing.sm
   },
   input: {
-    minHeight: 48,
-    borderRadius: radius.md,
+    minHeight: 52,
+    borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.line,
-    backgroundColor: colors.surface,
+    backgroundColor: "rgba(255,255,255,0.86)",
     color: colors.text,
-    paddingHorizontal: 12
+    paddingHorizontal: spacing.md
   },
   notesInput: {
     minHeight: 76,
     paddingTop: 12
   },
   primaryButton: {
-    minHeight: 48,
+    minHeight: 50,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: radius.md,
+    borderRadius: radius.full,
     backgroundColor: colors.primary
   },
   primaryButtonText: {
@@ -207,9 +207,11 @@ const styles = StyleSheet.create({
   item: {
     flexDirection: "row",
     gap: 12,
-    borderRadius: radius.md,
-    backgroundColor: colors.surface,
-    padding: 12
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.86)",
+    backgroundColor: "rgba(255,255,255,0.76)",
+    padding: spacing.md
   },
   itemText: {
     flex: 1,
