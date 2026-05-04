@@ -119,16 +119,29 @@ export async function startBackgroundLocation() {
     foregroundService: {
       notificationTitle: "CoupleLoc location sharing",
       notificationBody: "Sharing your location with your partner in the background",
-      killServiceOnDestroy: false
+      killServiceOnDestroy: true
     },
     pausesUpdatesAutomatically: false
   });
 }
 
 export async function stopBackgroundLocation() {
-  const started = await Location.hasStartedLocationUpdatesAsync(BACKGROUND_LOCATION_TASK);
-  if (started) {
+  let started = false;
+  try {
+    started = await Location.hasStartedLocationUpdatesAsync(BACKGROUND_LOCATION_TASK);
+  } catch (err) {
+    console.warn("Check background location status failed", err);
+    return;
+  }
+
+  if (!started) {
+    return;
+  }
+
+  try {
     await Location.stopLocationUpdatesAsync(BACKGROUND_LOCATION_TASK);
+  } catch (err) {
+    console.warn("Stop background location failed", err);
   }
 }
 

@@ -26,6 +26,8 @@ export default function App() {
   const [pairing, setPairing] = useState<PairingStatus | null>(null);
   const [sharing, setSharing] = useState<SharingSettings | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const [authOverlay, setAuthOverlay] = useState(false);
 
   const loadProtectedState = useCallback(async (token: string, user?: User) => {
     const [resolvedUser, resolvedPairing, resolvedSharing] = await Promise.all([
@@ -60,14 +62,30 @@ export default function App() {
   const handleAuthenticated = async (token: string, user: User) => {
     setError(null);
     await loadProtectedState(token, user);
+    setAuthOverlay(false);
+    setLoggingOut(false);
   };
 
   const handleLogout = async () => {
-    await stopBackgroundLocation().catch(() => undefined);
-    await clearAccessToken();
-    setSession(null);
-    setPairing(null);
-    setSharing(null);
+    if (loggingOut) {
+      return;
+    }
+
+    setLoggingOut(true);
+    setAuthOverlay(true);
+    try {
+      await clearAccessToken();
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "退出登录时本地凭据清理失败");
+    } finally {
+      setTimeout(() => {
+        stopBackgroundLocation().catch((err) => {
+          console.warn("Stop background location after logout failed", err);
+        });
+        setLoggingOut(false);
+      }, 250);
+    }
   };
 
   if (booting) {
@@ -102,12 +120,18 @@ export default function App() {
       <MainScreen
         pairing={pairing}
         sharing={sharing}
+        suspended={authOverlay || loggingOut}
         token={session.token}
         user={session.user}
         onLogout={handleLogout}
         onPairingChanged={setPairing}
         onSharingChanged={setSharing}
       />
+      {authOverlay ? (
+        <View style={styles.authOverlay}>
+          <AuthScreen error={error} onAuthenticated={handleAuthenticated} />
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -126,5 +150,9 @@ const styles = StyleSheet.create({
   },
   muted: {
     color: colors.muted
+  },
+  authOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: colors.background
   }
 });

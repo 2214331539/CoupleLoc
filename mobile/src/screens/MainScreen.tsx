@@ -15,6 +15,7 @@ type Props = {
   token: string;
   pairing: PairingStatus;
   sharing: SharingSettings;
+  suspended?: boolean;
   onLogout: () => void;
   onPairingChanged: (status: PairingStatus) => void;
   onSharingChanged: (settings: SharingSettings) => void;
@@ -37,7 +38,7 @@ export function MainScreen(props: Props) {
           pointerEvents={activeTab === "map" ? "auto" : "none"}
           style={[styles.tabPane, activeTab !== "map" && styles.hiddenPane]}
         >
-          <TrackerScreen {...props} />
+          <TrackerScreen {...props} suspended={props.suspended} />
         </View>
 
         {activeTab === "chat" ? (

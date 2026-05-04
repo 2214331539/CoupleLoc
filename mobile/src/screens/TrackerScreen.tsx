@@ -44,6 +44,7 @@ type Props = {
   token: string;
   pairing: PairingStatus;
   sharing: SharingSettings;
+  suspended?: boolean;
   onLogout: () => void;
   onSharingChanged: (settings: SharingSettings) => void;
 };
@@ -122,6 +123,7 @@ export function TrackerScreen({
   token,
   pairing,
   sharing,
+  suspended = false,
   onSharingChanged,
 }: Props) {
   const mapRef = useRef<any>(null);
@@ -161,6 +163,10 @@ export function TrackerScreen({
   }, [amapReady, cameraPosition]);
 
   useEffect(() => {
+    if (suspended) {
+      return;
+    }
+
     async function loadLocationState() {
       try {
         const [state, points] = await Promise.all([fetchLocationState(), listMemoryPoints()]);
@@ -176,9 +182,14 @@ export function TrackerScreen({
     }
 
     loadLocationState();
-  }, [onSharingChanged]);
+  }, [onSharingChanged, suspended]);
 
   useEffect(() => {
+    if (suspended) {
+      setSocketState("closed");
+      return;
+    }
+
     const socket = new WebSocket(buildLocationWebSocketUrl(token));
     setSocketState("connecting");
 
@@ -226,13 +237,19 @@ export function TrackerScreen({
       clearInterval(keepAlive);
       socket.close();
     };
-  }, [partner?.id, token]);
+  }, [partner?.id, suspended, token]);
 
   useEffect(() => {
     let subscription: { remove: () => void } | null = null;
     let cancelled = false;
 
     async function startTracking() {
+      if (suspended) {
+        setStatus("位置共享已暂停");
+        setPermission(await getPermissionSnapshot());
+        return;
+      }
+
       if (!sharing.enabled || sharing.mode === "paused") {
         await stopBackgroundLocation().catch(() => undefined);
         setStatus("位置共享已暂停");
@@ -275,7 +292,7 @@ export function TrackerScreen({
       cancelled = true;
       subscription?.remove();
     };
-  }, [sharing.enabled, sharing.mode]);
+  }, [sharing.enabled, sharing.mode, suspended]);
 
   const toggleSharing = async (enabled: boolean) => {
     setStatus(enabled ? "正在开启共享" : "正在暂停共享");

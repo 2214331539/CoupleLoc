@@ -239,7 +239,10 @@ export function ProfileScreen({
           <ListRow
             destructive
             left={<IconBubble icon="↩" tone="plain" />}
-            onPress={onLogout}
+            onPress={() => {
+              setStatus("正在退出登录");
+              onLogout();
+            }}
             title="退出登录"
           />
         </Section>

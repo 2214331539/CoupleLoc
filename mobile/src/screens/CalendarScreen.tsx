@@ -25,7 +25,12 @@ type Props = {
   token: string;
 };
 
-const timeOptions = ["09:00", "14:00", "19:00", "21:00"];
+const timeOptions = Array.from({ length: 34 }, (_, index) => {
+  const totalMinutes = 7 * 60 + index * 30;
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+});
 const weekDays = ["日", "一", "二", "三", "四", "五", "六"];
 
 function monthTitle(date: Date) {
@@ -45,6 +50,20 @@ function makeStartAt(date: Date, time: string) {
   const value = new Date(date);
   value.setHours(hours ?? 19, minutes ?? 0, 0, 0);
   return value.toISOString();
+}
+
+function shortDateLabel(date: Date) {
+  return `${date.getMonth() + 1}/${date.getDate()}`;
+}
+
+function relativeDateLabel(date: Date, index: number) {
+  if (index === 0) {
+    return "今天";
+  }
+  if (index === 1) {
+    return "明天";
+  }
+  return weekDays[date.getDay()];
 }
 
 function eventTone(event: CalendarEvent) {
@@ -145,6 +164,16 @@ export function CalendarScreen({ pairing, token }: Props) {
         .sort((a, b) => +new Date(a.starts_at) - +new Date(b.starts_at)),
     [events]
   );
+
+  const dateOptions = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return Array.from({ length: 30 }, (_, index) => {
+      const value = new Date(today);
+      value.setDate(today.getDate() + index);
+      return value;
+    });
+  }, []);
 
   const submit = async () => {
     if (!pairing.paired) {
@@ -272,7 +301,7 @@ export function CalendarScreen({ pairing, token }: Props) {
           <Text style={styles.sectionTitle}>近期计划</Text>
           <PillButton
             disabled={!pairing.paired}
-            label={showForm ? "收起" : "添加"}
+            label={showForm ? "收起" : "添加计划"}
             onPress={() => {
               setStatus("选择日期和时间后保存到共享日历");
               setShowForm((value) => !value);
@@ -284,24 +313,60 @@ export function CalendarScreen({ pairing, token }: Props) {
 
         {showForm ? (
           <Card style={styles.formCard}>
+            <View style={styles.formBlock}>
+              <Text style={styles.formLabel}>选择日期</Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.dateChipStrip}
+              >
+                {dateOptions.map((date, index) => {
+                  const active = sameDate(date, selectedDate);
+                  return (
+                    <Pressable
+                      key={date.toISOString()}
+                      onPress={() => {
+                        setSelectedDate(date);
+                        setMonth(new Date(date.getFullYear(), date.getMonth(), 1));
+                      }}
+                      style={[styles.dateChip, active && styles.dateChipActive]}
+                    >
+                      <Text style={[styles.dateChipWeek, active && styles.dateChipTextActive]}>
+                        {relativeDateLabel(date, index)}
+                      </Text>
+                      <Text style={[styles.dateChipDate, active && styles.dateChipTextActive]}>
+                        {shortDateLabel(date)}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            </View>
             <View style={styles.selectedDateBox}>
               <Text style={styles.selectedDateLabel}>已选择</Text>
               <Text style={styles.selectedDateText}>
                 {selectedDate.toLocaleDateString()} {selectedTime}
               </Text>
             </View>
-            <View style={styles.timeRow}>
-              {timeOptions.map((time) => (
-                <Pressable
-                  key={time}
-                  onPress={() => setSelectedTime(time)}
-                  style={[styles.timeChip, selectedTime === time && styles.timeChipActive]}
-                >
-                  <Text style={[styles.timeText, selectedTime === time && styles.timeTextActive]}>
-                    {time}
-                  </Text>
-                </Pressable>
-              ))}
+            <View style={styles.formBlock}>
+              <Text style={styles.formLabel}>选择时间</Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.timeStrip}
+              >
+                {timeOptions.map((time) => (
+                  <Pressable
+                    key={time}
+                    onPress={() => setSelectedTime(time)}
+                    style={[styles.timeChip, selectedTime === time && styles.timeChipActive]}
+                  >
+                    <Text style={[styles.timeText, selectedTime === time && styles.timeTextActive]}>
+                      {time}
+                    </Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
             </View>
             <TextInput
               onChangeText={setTitle}
@@ -490,6 +555,47 @@ const styles = StyleSheet.create({
   formCard: {
     gap: spacing.md
   },
+  formBlock: {
+    gap: spacing.sm
+  },
+  formLabel: {
+    color: colors.text,
+    fontSize: 15,
+    fontWeight: "800"
+  },
+  dateChipStrip: {
+    flexDirection: "row",
+    gap: spacing.sm,
+    paddingRight: spacing.sm
+  },
+  dateChip: {
+    width: 70,
+    minHeight: 58,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.lg,
+    backgroundColor: colors.fill,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.line
+  },
+  dateChipActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary
+  },
+  dateChipWeek: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: "700"
+  },
+  dateChipDate: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: "800",
+    marginTop: 2
+  },
+  dateChipTextActive: {
+    color: colors.surface
+  },
   selectedDateBox: {
     borderRadius: radius.md,
     backgroundColor: colors.fill,
@@ -506,12 +612,16 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     marginTop: 3
   },
-  timeRow: {
+  timeStrip: {
     flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm
+    gap: spacing.sm,
+    paddingRight: spacing.sm
   },
   timeChip: {
+    width: 72,
+    minHeight: 38,
+    alignItems: "center",
+    justifyContent: "center",
     borderRadius: radius.full,
     backgroundColor: colors.fill,
     paddingHorizontal: spacing.md,
