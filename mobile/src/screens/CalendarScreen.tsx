@@ -41,9 +41,9 @@ const timeOptions = Array.from({ length: 34 }, (_, index) => {
   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
 });
 const weekDays = ["日", "一", "二", "三", "四", "五", "六"];
-const dateWheelItemHeight = 50;
-const dateWheelVisibleItems = 5;
-const dateWheelPadding = dateWheelItemHeight * 2;
+const wheelItemHeight = 50;
+const wheelVisibleItems = 5;
+const wheelPadding = wheelItemHeight * 2;
 
 function monthTitle(date: Date) {
   return `${date.getFullYear()}年 ${date.getMonth() + 1}月`;
@@ -94,6 +94,20 @@ function fullDateLabel(date: Date) {
   return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日 周${weekDays[date.getDay()]}`;
 }
 
+function timePeriodLabel(time: string) {
+  const hour = Number(time.split(":")[0]);
+  if (hour < 11) {
+    return "上午";
+  }
+  if (hour < 14) {
+    return "中午";
+  }
+  if (hour < 18) {
+    return "下午";
+  }
+  return "晚上";
+}
+
 function eventTone(event: CalendarEvent) {
   const text = `${event.title} ${event.notes ?? ""}`;
   if (/机票|航班|车票|高铁|travel|flight/i.test(text)) {
@@ -107,15 +121,18 @@ function eventTone(event: CalendarEvent) {
 
 export function CalendarScreen({ pairing, token }: Props) {
   const dateListRef = useRef<FlatList<Date> | null>(null);
+  const timeListRef = useRef<FlatList<string> | null>(null);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
   const [selectedDate, setSelectedDate] = useState(() => new Date());
   const [pendingDate, setPendingDate] = useState(() => new Date());
   const [selectedTime, setSelectedTime] = useState("19:00");
+  const [pendingTime, setPendingTime] = useState("19:00");
   const [status, setStatus] = useState("正在同步日历");
   const [showForm, setShowForm] = useState(false);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
+  const [timePickerOpen, setTimePickerOpen] = useState(false);
   const [month, setMonth] = useState(() => new Date());
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -214,7 +231,7 @@ export function CalendarScreen({ pairing, token }: Props) {
   const updatePendingDateFromOffset = (offsetY: number) => {
     const index = Math.max(
       0,
-      Math.min(dateOptions.length - 1, Math.round(offsetY / dateWheelItemHeight))
+      Math.min(dateOptions.length - 1, Math.round(offsetY / wheelItemHeight))
     );
     const date = dateOptions[index];
     if (date) {
@@ -232,6 +249,33 @@ export function CalendarScreen({ pairing, token }: Props) {
     setSelectedDate(pendingDate);
     setMonth(new Date(pendingDate.getFullYear(), pendingDate.getMonth(), 1));
     setDatePickerOpen(false);
+  };
+
+  const getTimeOptionIndex = (time: string) => {
+    const index = timeOptions.indexOf(time);
+    return index >= 0 ? index : timeOptions.indexOf("19:00");
+  };
+
+  const updatePendingTimeFromOffset = (offsetY: number) => {
+    const index = Math.max(
+      0,
+      Math.min(timeOptions.length - 1, Math.round(offsetY / wheelItemHeight))
+    );
+    const time = timeOptions[index];
+    if (time) {
+      setPendingTime(time);
+    }
+  };
+
+  const openTimePicker = () => {
+    const index = getTimeOptionIndex(selectedTime);
+    setPendingTime(timeOptions[index] ?? selectedTime);
+    setTimePickerOpen(true);
+  };
+
+  const confirmTimePicker = () => {
+    setSelectedTime(pendingTime);
+    setTimePickerOpen(false);
   };
 
   const submit = async () => {
@@ -374,12 +418,12 @@ export function CalendarScreen({ pairing, token }: Props) {
           <Card style={styles.formCard}>
             <View style={styles.formBlock}>
               <Text style={styles.formLabel}>选择日期</Text>
-              <Pressable onPress={openDatePicker} style={styles.dateInputButton}>
+              <Pressable onPress={openDatePicker} style={styles.pickerInputButton}>
                 <View>
-                  <Text style={styles.dateInputLabel}>{relativeDateLabel(selectedDate)}</Text>
-                  <Text style={styles.dateInputText}>{fullDateLabel(selectedDate)}</Text>
+                  <Text style={styles.pickerInputLabel}>{relativeDateLabel(selectedDate)}</Text>
+                  <Text style={styles.pickerInputText}>{fullDateLabel(selectedDate)}</Text>
                 </View>
-                <Text style={styles.dateInputArrow}>⌄</Text>
+                <Text style={styles.pickerInputArrow}>⌄</Text>
               </Pressable>
             </View>
             <View style={styles.selectedDateBox}>
@@ -390,23 +434,13 @@ export function CalendarScreen({ pairing, token }: Props) {
             </View>
             <View style={styles.formBlock}>
               <Text style={styles.formLabel}>选择时间</Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.timeStrip}
-              >
-                {timeOptions.map((time) => (
-                  <Pressable
-                    key={time}
-                    onPress={() => setSelectedTime(time)}
-                    style={[styles.timeChip, selectedTime === time && styles.timeChipActive]}
-                  >
-                    <Text style={[styles.timeText, selectedTime === time && styles.timeTextActive]}>
-                      {time}
-                    </Text>
-                  </Pressable>
-                ))}
-              </ScrollView>
+              <Pressable onPress={openTimePicker} style={styles.pickerInputButton}>
+                <View>
+                  <Text style={styles.pickerInputLabel}>{timePeriodLabel(selectedTime)}</Text>
+                  <Text style={styles.pickerInputText}>{selectedTime}</Text>
+                </View>
+                <Text style={styles.pickerInputArrow}>⌄</Text>
+              </Pressable>
             </View>
             <TextInput
               onChangeText={setTitle}
@@ -454,7 +488,7 @@ export function CalendarScreen({ pairing, token }: Props) {
         onShow={() => {
           dateListRef.current?.scrollToOffset({
             animated: false,
-            offset: getDateOptionIndex(pendingDate) * dateWheelItemHeight
+            offset: getDateOptionIndex(pendingDate) * wheelItemHeight
           });
         }}
         transparent
@@ -480,13 +514,13 @@ export function CalendarScreen({ pairing, token }: Props) {
                 data={dateOptions}
                 keyExtractor={(item) => item.toISOString()}
                 showsVerticalScrollIndicator={false}
-                snapToInterval={dateWheelItemHeight}
+                snapToInterval={wheelItemHeight}
                 decelerationRate="fast"
                 bounces={false}
                 initialScrollIndex={getDateOptionIndex(selectedDate)}
                 getItemLayout={(_, index) => ({
-                  length: dateWheelItemHeight,
-                  offset: dateWheelItemHeight * index,
+                  length: wheelItemHeight,
+                  offset: wheelItemHeight * index,
                   index
                 })}
                 contentContainerStyle={styles.wheelContent}
@@ -510,6 +544,74 @@ export function CalendarScreen({ pairing, token }: Props) {
             </View>
 
             <PillButton label="确认日期" onPress={confirmDatePicker} />
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        animationType="slide"
+        onRequestClose={() => setTimePickerOpen(false)}
+        onShow={() => {
+          timeListRef.current?.scrollToOffset({
+            animated: false,
+            offset: getTimeOptionIndex(pendingTime) * wheelItemHeight
+          });
+        }}
+        transparent
+        visible={timePickerOpen}
+      >
+        <View style={styles.sheetRoot}>
+          <Pressable style={styles.sheetBackdrop} onPress={() => setTimePickerOpen(false)} />
+          <View style={styles.sheetCard}>
+            <View style={styles.sheetHandle} />
+            <View style={styles.sheetHeader}>
+              <View>
+                <Text style={styles.sheetTitle}>选择时间</Text>
+                <Text style={styles.sheetSubtitle}>
+                  {timePeriodLabel(pendingTime)} {pendingTime}
+                </Text>
+              </View>
+              <Pressable onPress={() => setTimePickerOpen(false)} style={styles.sheetCloseButton}>
+                <Text style={styles.sheetCloseText}>取消</Text>
+              </Pressable>
+            </View>
+
+            <View style={styles.wheelShell}>
+              <FlatList
+                ref={timeListRef}
+                data={timeOptions}
+                keyExtractor={(item) => item}
+                showsVerticalScrollIndicator={false}
+                snapToInterval={wheelItemHeight}
+                decelerationRate="fast"
+                bounces={false}
+                initialScrollIndex={getTimeOptionIndex(selectedTime)}
+                getItemLayout={(_, index) => ({
+                  length: wheelItemHeight,
+                  offset: wheelItemHeight * index,
+                  index
+                })}
+                contentContainerStyle={styles.wheelContent}
+                onMomentumScrollEnd={(event) => updatePendingTimeFromOffset(event.nativeEvent.contentOffset.y)}
+                onScrollEndDrag={(event) => updatePendingTimeFromOffset(event.nativeEvent.contentOffset.y)}
+                renderItem={({ item }) => {
+                  const active = item === pendingTime;
+                  return (
+                    <View style={[styles.wheelRow, active && styles.wheelRowActive]}>
+                      <Text style={[styles.wheelPrimary, active && styles.wheelPrimaryActive]}>
+                        {timePeriodLabel(item)}
+                      </Text>
+                      <Text style={[styles.wheelSecondary, active && styles.wheelSecondaryActive]}>
+                        {item}
+                      </Text>
+                    </View>
+                  );
+                }}
+              />
+              <View pointerEvents="none" style={styles.wheelSelection} />
+            </View>
+
+            <PillButton label="确认时间" onPress={confirmTimePicker} />
           </View>
         </View>
       </Modal>
@@ -669,7 +771,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "800"
   },
-  dateInputButton: {
+  pickerInputButton: {
     minHeight: 58,
     flexDirection: "row",
     alignItems: "center",
@@ -681,18 +783,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm
   },
-  dateInputLabel: {
+  pickerInputLabel: {
     color: colors.muted,
     fontSize: 13,
     fontWeight: "700"
   },
-  dateInputText: {
+  pickerInputText: {
     color: colors.text,
     fontSize: 17,
     fontWeight: "800",
     marginTop: 2
   },
-  dateInputArrow: {
+  pickerInputArrow: {
     color: colors.primary,
     fontSize: 24,
     fontWeight: "700"
@@ -712,31 +814,6 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: "700",
     marginTop: 3
-  },
-  timeStrip: {
-    flexDirection: "row",
-    gap: spacing.sm,
-    paddingRight: spacing.sm
-  },
-  timeChip: {
-    width: 72,
-    minHeight: 38,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: radius.full,
-    backgroundColor: colors.fill,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm
-  },
-  timeChipActive: {
-    backgroundColor: colors.primary
-  },
-  timeText: {
-    color: colors.textSoft,
-    fontWeight: "700"
-  },
-  timeTextActive: {
-    color: colors.surface
   },
   input: {
     height: 48,
@@ -804,7 +881,7 @@ const styles = StyleSheet.create({
   },
   sheetBackdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(17, 24, 39, 0.28)"
+    backgroundColor: "rgba(17, 24, 39, 0.22)"
   },
   sheetCard: {
     borderTopLeftRadius: radius.xl,
@@ -812,7 +889,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     padding: spacing.lg,
     paddingBottom: spacing.xl,
-    gap: spacing.lg
+    gap: spacing.lg,
+    elevation: 18,
+    shadowColor: "#111827",
+    shadowOpacity: 0.12,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: -8 }
   },
   sheetHandle: {
     alignSelf: "center",
@@ -851,15 +933,15 @@ const styles = StyleSheet.create({
     fontWeight: "700"
   },
   wheelShell: {
-    height: dateWheelItemHeight * dateWheelVisibleItems,
+    height: wheelItemHeight * wheelVisibleItems,
     overflow: "hidden",
     justifyContent: "center"
   },
   wheelContent: {
-    paddingVertical: dateWheelPadding
+    paddingVertical: wheelPadding
   },
   wheelRow: {
-    height: dateWheelItemHeight,
+    height: wheelItemHeight,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -894,11 +976,12 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 0,
     right: 0,
-    top: dateWheelItemHeight * 2,
-    height: dateWheelItemHeight,
+    top: wheelItemHeight * 2,
+    height: wheelItemHeight,
     borderRadius: radius.md,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.primary
+    borderColor: "rgba(255, 107, 129, 0.32)",
+    backgroundColor: "rgba(255, 107, 129, 0.04)"
   },
   deleteButton: {
     minHeight: 34,
