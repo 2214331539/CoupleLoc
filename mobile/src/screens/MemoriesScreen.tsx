@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 
 import {
   buildLocationWebSocketUrl,
@@ -8,6 +8,8 @@ import {
   fetchLocationState,
   listMemoryPoints,
 } from "../api/client";
+import { SafeScreen } from "../components/SafeScreen";
+import { colors, radius, spacing } from "../theme";
 import type { LocationSnapshot, MemoryPoint, RealtimeEvent } from "../types";
 
 type Props = {
@@ -100,7 +102,7 @@ export function MemoriesScreen({ token }: Props) {
   };
 
   return (
-    <SafeAreaView style={styles.screen}>
+    <SafeScreen style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
           <Text style={styles.title}>Map Memories</Text>
@@ -145,40 +147,40 @@ export function MemoriesScreen({ token }: Props) {
           ))}
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </SafeScreen>
   );
 }
 
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#f7f7f2"
+    backgroundColor: colors.background
   },
   content: {
     padding: 16,
-    gap: 16
+    gap: spacing.md
   },
   header: {
     gap: 4
   },
   title: {
-    color: "#1f211d",
+    color: colors.text,
     fontSize: 28,
     fontWeight: "800"
   },
   subtitle: {
-    color: "#62645d"
+    color: colors.muted
   },
   form: {
-    gap: 10
+    gap: spacing.sm
   },
   input: {
     minHeight: 48,
-    borderRadius: 8,
+    borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: "#d5d7ca",
-    backgroundColor: "#ffffff",
-    color: "#1f211d",
+    borderColor: colors.line,
+    backgroundColor: colors.surface,
+    color: colors.text,
     paddingHorizontal: 12
   },
   notesInput: {
@@ -189,24 +191,24 @@ const styles = StyleSheet.create({
     minHeight: 48,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 8,
-    backgroundColor: "#2f6f64"
+    borderRadius: radius.md,
+    backgroundColor: colors.primary
   },
   primaryButtonText: {
-    color: "#ffffff",
+    color: colors.surface,
     fontWeight: "800"
   },
   status: {
-    color: "#62645d"
+    color: colors.muted
   },
   list: {
-    gap: 10
+    gap: spacing.sm
   },
   item: {
     flexDirection: "row",
     gap: 12,
-    borderRadius: 8,
-    backgroundColor: "#ffffff",
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
     padding: 12
   },
   itemText: {
@@ -214,26 +216,26 @@ const styles = StyleSheet.create({
     gap: 4
   },
   itemTitle: {
-    color: "#1f211d",
+    color: colors.text,
     fontSize: 16,
     fontWeight: "800"
   },
   itemMeta: {
-    color: "#62645d"
+    color: colors.muted
   },
   itemNotes: {
-    color: "#1f211d"
+    color: colors.text
   },
   deleteButton: {
     alignSelf: "center",
-    borderRadius: 8,
+    borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: "#b42318",
+    borderColor: colors.danger,
     paddingHorizontal: 10,
     paddingVertical: 8
   },
   deleteButtonText: {
-    color: "#b42318",
+    color: colors.danger,
     fontWeight: "800"
   }
 });

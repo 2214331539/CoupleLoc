@@ -1,20 +1,53 @@
+import base64
+import hashlib
+import hmac
+import secrets
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 
 from app.core.config import get_settings
 
-password_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+PASSWORD_HASH_ALGORITHM = "pbkdf2_sha256"
+PASSWORD_HASH_ITERATIONS = 260_000
+SALT_BYTES = 16
 
 
 def hash_password(password: str) -> str:
-    return password_context.hash(password)
+    salt = secrets.token_bytes(SALT_BYTES)
+    checksum = hashlib.pbkdf2_hmac(
+        "sha256",
+        password.encode("utf-8"),
+        salt,
+        PASSWORD_HASH_ITERATIONS,
+    )
+    encoded_salt = base64.urlsafe_b64encode(salt).decode("ascii")
+    encoded_checksum = base64.urlsafe_b64encode(checksum).decode("ascii")
+    return (
+        f"{PASSWORD_HASH_ALGORITHM}${PASSWORD_HASH_ITERATIONS}"
+        f"${encoded_salt}${encoded_checksum}"
+    )
 
 
 def verify_password(password: str, password_hash: str) -> bool:
-    return password_context.verify(password, password_hash)
+    try:
+        algorithm, iterations_text, encoded_salt, encoded_checksum = password_hash.split("$", 3)
+        if algorithm != PASSWORD_HASH_ALGORITHM:
+            return False
+        iterations = int(iterations_text)
+        salt = base64.urlsafe_b64decode(encoded_salt.encode("ascii"))
+        expected_checksum = base64.urlsafe_b64decode(encoded_checksum.encode("ascii"))
+    except (ValueError, TypeError):
+        return False
+
+    actual_checksum = hashlib.pbkdf2_hmac(
+        "sha256",
+        password.encode("utf-8"),
+        salt,
+        iterations,
+    )
+    return hmac.compare_digest(actual_checksum, expected_checksum)
 
 
 def create_access_token(user_id: UUID) -> str:
@@ -36,4 +69,3 @@ def decode_access_token(token: str) -> UUID | None:
         return UUID(subject)
     except (JWTError, ValueError):
         return None
-

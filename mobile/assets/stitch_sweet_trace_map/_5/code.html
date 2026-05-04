@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+
+<html lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,600;0,700;0,800;1,800&amp;family=Be+Vietnam+Pro:wght@400;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-error": "#ffffff",
+                    "secondary": "#42617d",
+                    "on-primary-fixed": "#370c19",
+                    "on-primary-fixed-variant": "#6c3644",
+                    "secondary-fixed": "#cde5ff",
+                    "surface-bright": "#fef8fa",
+                    "on-error-container": "#93000a",
+                    "secondary-fixed-dim": "#aacaea",
+                    "on-secondary-container": "#43627e",
+                    "surface-variant": "#e7e1e3",
+                    "outline": "#847376",
+                    "surface-container-low": "#f8f2f4",
+                    "surface-container": "#f2ecee",
+                    "surface-container-high": "#ece7e9",
+                    "on-tertiary-fixed": "#06210d",
+                    "tertiary-fixed": "#cbebca",
+                    "primary": "#874d5b",
+                    "surface-container-highest": "#e7e1e3",
+                    "on-tertiary-container": "#3f5b42",
+                    "on-surface-variant": "#514346",
+                    "inverse-primary": "#fcb2c2",
+                    "surface-dim": "#ded9db",
+                    "on-secondary-fixed-variant": "#294964",
+                    "tertiary": "#49654c",
+                    "inverse-on-surface": "#f5eff1",
+                    "on-tertiary": "#ffffff",
+                    "primary-container": "#ffb5c5",
+                    "on-surface": "#1d1b1d",
+                    "on-primary": "#ffffff",
+                    "tertiary-container": "#b2d1b2",
+                    "outline-variant": "#d6c2c4",
+                    "surface-tint": "#874d5b",
+                    "background": "#fef8fa",
+                    "primary-fixed": "#ffd9e0",
+                    "tertiary-fixed-dim": "#afcfaf",
+                    "surface": "#fef8fa",
+                    "inverse-surface": "#323031",
+                    "on-primary-container": "#7b4351",
+                    "surface-container-lowest": "#ffffff",
+                    "on-secondary-fixed": "#001d32",
+                    "error": "#ba1a1a",
+                    "secondary-container": "#bddefe",
+                    "on-secondary": "#ffffff",
+                    "primary-fixed-dim": "#fcb2c2",
+                    "on-background": "#1d1b1d",
+                    "on-tertiary-fixed-variant": "#324d35",
+                    "error-container": "#ffdad6"
+            },
+            "borderRadius": {
+                    "DEFAULT": "1rem",
+                    "lg": "2rem",
+                    "xl": "3rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "md": "24px",
+                    "gutter": "16px",
+                    "xl": "64px",
+                    "base": "8px",
+                    "xs": "4px",
+                    "lg": "40px",
+                    "container-margin": "20px",
+                    "sm": "12px"
+            },
+            "fontFamily": {
+                    "h2": ["Plus Jakarta Sans"],
+                    "label-caps": ["Be Vietnam Pro"],
+                    "h1": ["Plus Jakarta Sans"],
+                    "body-md": ["Be Vietnam Pro"],
+                    "body-lg": ["Be Vietnam Pro"]
+            },
+            "fontSize": {
+                    "h2": ["24px", {"lineHeight": "1.3", "fontWeight": "600"}],
+                    "label-caps": ["12px", {"lineHeight": "1.0", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "h1": ["32px", {"lineHeight": "1.2", "fontWeight": "700"}],
+                    "body-md": ["16px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                    "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .soft-pulse {
+            animation: pulse-ring 3s cubic-bezier(0.455, 0.03, 0.515, 0.955) infinite;
+        }
+        @keyframes pulse-ring {
+            0% { transform: scale(0.95); opacity: 0.8; }
+            50% { transform: scale(1.05); opacity: 0.4; }
+            100% { transform: scale(0.95); opacity: 0.8; }
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background min-h-screen font-body-md overflow-x-hidden">
+<!-- TopAppBar -->
+<header class="fixed top-0 left-0 right-0 z-50 bg-stone-50/90 backdrop-blur-xl rounded-b-[32px] shadow-lg shadow-rose-200/20 flex justify-between items-center w-full px-6 py-4 h-16 transition-transform duration-200 ease-out">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full border-2 border-primary-container overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A soft-focus portrait of a smiling partner, captured in warm, natural morning light with a minimalist aesthetic. The background is a cream-colored interior with hints of soft pink textiles, maintaining the brand's gentle and intimate mood. The lighting is diffused, emphasizing a feeling of closeness and emotional warmth through a high-key photographic style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDhpI7xtP0TDW1W8pcowTVmH81hVdUbmxiWCn6fKcuDn8T5niDTJSyzOG9imKEn3LVd3CN3SAh_yd6IH6edcNGNTGgcwxM9LV46FXKTSR9CkGSpyw--xShePqcsxFHxkxaX85dMHBTeuBBpryrahk_sueKr2R6LHnpKhALtiJ-sYhsAKlKWJPV8U7EvdPB0Y5CkJeBJS_1uvQHin9FKvxylaujZmWsxnm9HhGf0en4oBUMjj8R_GBkNB5cHtpZFwfPFVwGknjD2igS9"/>
+</div>
+<span class="text-2xl font-black italic text-rose-400 tracking-tighter font-h1">Heartline</span>
+</div>
+<button class="text-rose-300 active:scale-[0.97] transition-transform duration-200 ease-out hover:opacity-80">
+<span class="material-symbols-outlined text-3xl" data-icon="favorite" style="font-variation-settings: 'FILL' 1;">favorite</span>
+</button>
+</header>
+<main class="pt-24 pb-32 px-gutter max-w-md mx-auto">
+<!-- Calendar Section -->
+<section class="bg-surface-container-lowest rounded-xl p-6 shadow-xl shadow-rose-200/10 mb-lg">
+<div class="flex justify-between items-center mb-md">
+<h2 class="font-h2 text-h2 text-primary">2024年 5月</h2>
+<div class="flex gap-2">
+<button class="w-8 h-8 flex items-center justify-center rounded-full bg-surface-container hover:bg-primary-container transition-colors">
+<span class="material-symbols-outlined text-sm" data-icon="chevron_left">chevron_left</span>
+</button>
+<button class="w-8 h-8 flex items-center justify-center rounded-full bg-surface-container hover:bg-primary-container transition-colors">
+<span class="material-symbols-outlined text-sm" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+</div>
+<div class="grid grid-cols-7 gap-y-4 text-center">
+<div class="font-label-caps text-outline uppercase">日</div>
+<div class="font-label-caps text-outline uppercase">一</div>
+<div class="font-label-caps text-outline uppercase">二</div>
+<div class="font-label-caps text-outline uppercase">三</div>
+<div class="font-label-caps text-outline uppercase">四</div>
+<div class="font-label-caps text-outline uppercase">五</div>
+<div class="font-label-caps text-outline uppercase">六</div>
+<!-- Empty spaces for start of month -->
+<div class="h-10"></div>
+<div class="h-10"></div>
+<div class="h-10"></div>
+<div class="h-10 flex items-center justify-center font-body-md">1</div>
+<div class="h-10 flex items-center justify-center font-body-md">2</div>
+<div class="h-10 flex items-center justify-center font-body-md">3</div>
+<div class="h-10 flex items-center justify-center font-body-md">4</div>
+<div class="h-10 flex items-center justify-center font-body-md">5</div>
+<div class="h-10 flex items-center justify-center font-body-md">6</div>
+<div class="h-10 flex items-center justify-center font-body-md relative">
+                    7
+                    <span class="absolute bottom-1 w-1.5 h-1.5 bg-secondary rounded-full"></span>
+</div>
+<div class="h-10 flex items-center justify-center font-body-md">8</div>
+<div class="h-10 flex items-center justify-center font-body-md">9</div>
+<div class="h-10 flex items-center justify-center font-body-md relative bg-primary-container/30 rounded-full">
+                    10
+                    <span class="absolute -top-1 -right-1 text-[10px]">✈️</span>
+</div>
+<div class="h-10 flex items-center justify-center font-body-md">11</div>
+<div class="h-10 flex items-center justify-center font-body-md">12</div>
+<div class="h-10 flex items-center justify-center font-body-md">13</div>
+<div class="h-10 flex items-center justify-center font-body-md">14</div>
+<div class="h-10 flex items-center justify-center font-body-md relative">
+                    15
+                    <span class="absolute bottom-1 w-1.5 h-1.5 bg-primary rounded-full"></span>
+</div>
+<div class="h-10 flex items-center justify-center font-body-md">16</div>
+<div class="h-10 flex items-center justify-center font-body-md">17</div>
+<div class="h-10 flex items-center justify-center font-body-md">18</div>
+<div class="h-10 flex items-center justify-center font-body-md">19</div>
+<div class="h-10 flex items-center justify-center font-body-md relative">
+                    20
+                    <span class="absolute bottom-1 w-1.5 h-1.5 bg-tertiary rounded-full"></span>
+</div>
+<div class="h-10 flex items-center justify-center font-body-md">21</div>
+<div class="h-10 flex items-center justify-center font-body-md">22</div>
+<div class="h-10 flex items-center justify-center font-body-md">23</div>
+<div class="h-10 flex items-center justify-center font-body-md">24</div>
+<div class="h-10 flex items-center justify-center font-body-md">25</div>
+</div>
+<!-- Legend -->
+<div class="mt-md flex justify-around border-t border-outline-variant pt-md">
+<div class="flex items-center gap-1.5 font-label-caps text-outline">
+<span class="w-2 h-2 bg-secondary rounded-full"></span>
+<span>见面日</span>
+</div>
+<div class="flex items-center gap-1.5 font-label-caps text-outline">
+<span class="w-2 h-2 bg-primary rounded-full"></span>
+<span>纪念日</span>
+</div>
+<div class="flex items-center gap-1.5 font-label-caps text-outline">
+<span class="w-2 h-2 bg-tertiary rounded-full"></span>
+<span>飞行日</span>
+</div>
+</div>
+</section>
+<!-- Timeline Section -->
+<div class="flex justify-between items-end mb-sm">
+<h3 class="font-h2 text-h2 text-on-surface">近期动态</h3>
+<button class="bg-primary-container text-on-primary-container px-4 py-2 rounded-full font-label-caps flex items-center gap-2 active:scale-95 transition-transform shadow-md shadow-primary-container/20">
+<span class="material-symbols-outlined text-sm" data-icon="add">add</span>
+<span>添加事件</span>
+</button>
+</div>
+<div class="space-y-md">
+<!-- Timeline Item: Flight -->
+<div class="bg-white rounded-xl p-md shadow-sm border border-secondary-fixed flex gap-gutter items-start">
+<div class="w-12 h-12 rounded-lg bg-secondary-fixed flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-secondary text-2xl" data-icon="flight_takeoff">flight_takeoff</span>
+</div>
+<div class="flex-1">
+<div class="flex justify-between items-start">
+<h4 class="font-h2 text-body-lg text-on-surface">下一次飞行：北京 ➔ 伦敦</h4>
+<span class="bg-secondary-fixed text-on-secondary-fixed-variant px-2 py-0.5 rounded font-label-caps text-[10px]">3天后</span>
+</div>
+<p class="text-outline font-body-md mt-1">航班号: CA937 | 13:45 起飞</p>
+<div class="mt-base flex items-center gap-2">
+<div class="flex -space-x-2">
+<img class="w-6 h-6 rounded-full border-2 border-white" data-alt="Close up photo of a personalized travel suitcase tag with initials and a small heart icon, shot in soft focus on a light wooden background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAlmmaDbT-cCdDkc01QLFHE1sg_Oq8Y7GmnsZgUEY2O6WScsXedBGDf6ZpdwE0jaUIzAuUEg4QYk0f8azve2SFi5jYB5BfD7NfECDRLhIOuNSCPgpEt9wId6hPtKMEXxFaUgajGgp5eHDbSVRQY6Z9rJIccZJExSkbZeQAKX4hEoZZ3kRmBboHIkFQKawhOXu3S6vzwYIpeM3oR6Zjk3PRFrSPXVofj_6bkcuwTqo3CIVUAGI65nkFpkLNVfnNu45Rae1YsOFU2ZqcS"/>
+<img class="w-6 h-6 rounded-full border-2 border-white" data-alt="Close up photo of a couple's fingers intertwined resting on a passport, captured in soft warm indoor lighting with a romantic aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCZ6w-Q8LS6kmEUus_bC-XpApSH4c3A6l_j9ELnp9WwPC0xpwyKtAmIhD9ZO5KWedAW4_auW8cs1Okw_yuAFZj8hx6VShMG7lPlzgBG_LptoKZ1v3-B31EibMcFOJ32GT8nkUdB0aEKxNFIXrs707GW2emKkfdnEmINgXaWhiMkdtUSpqsdYSfjQtQi5FqsIRIE6sofmcQWVYt8iY6x75wVDUBHcbCSDxRZZzeL-JYgp5-Jtxa2c1F1iAySWz-vVhJmB5Tgzfa_h1tY"/>
+</div>
+<span class="text-secondary font-label-caps">期待见面中...</span>
+</div>
+</div>
+</div>
+<!-- Timeline Item: Anniversary -->
+<div class="bg-white rounded-xl p-md shadow-sm border border-primary-fixed flex gap-gutter items-start relative overflow-hidden">
+<div class="absolute top-0 right-0 w-24 h-24 bg-primary-fixed/20 rounded-full -mr-12 -mt-12"></div>
+<div class="w-12 h-12 rounded-lg bg-primary-fixed flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-primary text-2xl" data-icon="calendar_month" style="font-variation-settings: 'FILL' 1;">calendar_month</span>
+</div>
+<div class="flex-1">
+<div class="flex justify-between items-start">
+<h4 class="font-h2 text-body-lg text-on-surface">相恋 500 天纪念日</h4>
+<span class="bg-primary-fixed text-on-primary-fixed-variant px-2 py-0.5 rounded font-label-caps text-[10px]">15/05</span>
+</div>
+<p class="text-outline font-body-md mt-1">给对方一个小惊喜吧 ✨</p>
+</div>
+</div>
+<!-- Timeline Item: Meeting -->
+<div class="bg-white rounded-xl p-md shadow-sm border border-tertiary-fixed flex gap-gutter items-start">
+<div class="w-12 h-12 rounded-lg bg-tertiary-fixed flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-tertiary text-2xl" data-icon="restaurant">restaurant</span>
+</div>
+<div class="flex-1">
+<div class="flex justify-between items-start">
+<h4 class="font-h2 text-body-lg text-on-surface">晚餐约会</h4>
+<span class="bg-tertiary-fixed text-on-tertiary-fixed-variant px-2 py-0.5 rounded font-label-caps text-[10px]">20/05</span>
+</div>
+<p class="text-outline font-body-md mt-1">地点: 我们常去的那家意式餐厅</p>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-2xl rounded-t-[40px] shadow-[0_-15px_40px_rgba(255,181,197,0.15)] border-t border-rose-100/50">
+<div class="flex justify-around items-center w-full max-w-md mx-auto px-4 pb-8 pt-4">
+<button class="flex flex-col items-center justify-center text-stone-400 px-6 py-2 scale-100 transition-all duration-300 hover:text-rose-300 active:scale-[0.92]">
+<span class="material-symbols-outlined" data-icon="map">map</span>
+<span class="font-['Plus_Jakarta_Sans'] text-[11px] font-bold uppercase tracking-widest mt-1">Map</span>
+</button>
+<button class="flex flex-col items-center justify-center text-stone-400 px-6 py-2 scale-100 transition-all duration-300 hover:text-rose-300 active:scale-[0.92]">
+<span class="material-symbols-outlined" data-icon="chat_bubble">chat_bubble</span>
+<span class="font-['Plus_Jakarta_Sans'] text-[11px] font-bold uppercase tracking-widest mt-1">Chat</span>
+</button>
+<!-- Active Tab: Calendar -->
+<button class="flex flex-col items-center justify-center bg-rose-50 text-rose-500 rounded-[24px] px-6 py-2 scale-105 transition-all duration-300 shadow-sm">
+<span class="material-symbols-outlined" data-icon="calendar_today" style="font-variation-settings: 'FILL' 1;">calendar_today</span>
+<span class="font-['Plus_Jakarta_Sans'] text-[11px] font-bold uppercase tracking-widest mt-1">Calendar</span>
+</button>
+<button class="flex flex-col items-center justify-center text-stone-400 px-6 py-2 scale-100 transition-all duration-300 hover:text-rose-300 active:scale-[0.92]">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-['Plus_Jakarta_Sans'] text-[11px] font-bold uppercase tracking-widest mt-1">Profile</span>
+</button>
+</div>
+</nav>
+</body></html>

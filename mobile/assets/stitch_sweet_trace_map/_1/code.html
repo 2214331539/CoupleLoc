@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+
+<html lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&amp;family=Be+Vietnam+Pro:wght@400;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-error": "#ffffff",
+                        "secondary": "#42617d",
+                        "on-primary-fixed": "#370c19",
+                        "on-primary-fixed-variant": "#6c3644",
+                        "secondary-fixed": "#cde5ff",
+                        "surface-bright": "#fef8fa",
+                        "on-error-container": "#93000a",
+                        "secondary-fixed-dim": "#aacaea",
+                        "on-secondary-container": "#43627e",
+                        "surface-variant": "#e7e1e3",
+                        "outline": "#847376",
+                        "surface-container-low": "#f8f2f4",
+                        "surface-container": "#f2ecee",
+                        "surface-container-high": "#ece7e9",
+                        "on-tertiary-fixed": "#06210d",
+                        "tertiary-fixed": "#cbebca",
+                        "primary": "#874d5b",
+                        "surface-container-highest": "#e7e1e3",
+                        "on-tertiary-container": "#3f5b42",
+                        "on-surface-variant": "#514346",
+                        "inverse-primary": "#fcb2c2",
+                        "surface-dim": "#ded9db",
+                        "on-secondary-fixed-variant": "#294964",
+                        "tertiary": "#49654c",
+                        "inverse-on-surface": "#f5eff1",
+                        "on-tertiary": "#ffffff",
+                        "primary-container": "#ffb5c5",
+                        "on-surface": "#1d1b1d",
+                        "on-primary": "#ffffff",
+                        "tertiary-container": "#b2d1b2",
+                        "outline-variant": "#d6c2c4",
+                        "surface-tint": "#874d5b",
+                        "background": "#fef8fa",
+                        "primary-fixed": "#ffd9e0",
+                        "tertiary-fixed-dim": "#afcfaf",
+                        "surface": "#fef8fa",
+                        "inverse-surface": "#323031",
+                        "on-primary-container": "#7b4351",
+                        "surface-container-lowest": "#ffffff",
+                        "on-secondary-fixed": "#001d32",
+                        "error": "#ba1a1a",
+                        "secondary-container": "#bddefe",
+                        "on-secondary": "#ffffff",
+                        "primary-fixed-dim": "#fcb2c2",
+                        "on-background": "#1d1b1d",
+                        "on-tertiary-fixed-variant": "#324d35",
+                        "error-container": "#ffdad6"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "md": "24px",
+                        "gutter": "16px",
+                        "xl": "64px",
+                        "base": "8px",
+                        "xs": "4px",
+                        "lg": "40px",
+                        "container-margin": "20px",
+                        "sm": "12px"
+                    },
+                    "fontFamily": {
+                        "h2": ["Plus Jakarta Sans"],
+                        "label-caps": ["Be Vietnam Pro"],
+                        "h1": ["Plus Jakarta Sans"],
+                        "body-md": ["Be Vietnam Pro"],
+                        "body-lg": ["Be Vietnam Pro"]
+                    },
+                    "fontSize": {
+                        "h2": ["24px", {"lineHeight": "1.3", "fontWeight": "600"}],
+                        "label-caps": ["12px", {"lineHeight": "1.0", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "h1": ["32px", {"lineHeight": "1.2", "fontWeight": "700"}],
+                        "body-md": ["16px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                        "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .soft-gradient-bg {
+            background: linear-gradient(135deg, #fef8fa 0%, #fff0f3 50%, #f0f7ff 100%);
+        }
+        .cloud-shape {
+            border-radius: 60% 40% 70% 30% / 30% 70% 30% 70%;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background font-body-md text-on-background min-h-screen flex items-center justify-center p-gutter relative overflow-hidden">
+<!-- Decorative Soft Pastel Background Elements -->
+<div class="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+<div class="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-primary-container/20 cloud-shape blur-3xl"></div>
+<div class="absolute bottom-[-10%] right-[-10%] w-[70%] h-[70%] bg-secondary-container/20 cloud-shape blur-3xl"></div>
+<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full soft-gradient-bg opacity-50"></div>
+</div>
+<!-- Auth Card Container -->
+<main class="relative z-10 w-full max-w-[440px] flex flex-col items-center">
+<!-- Logo Section -->
+<div class="mb-lg text-center">
+<div class="w-24 h-24 mx-auto mb-md bg-white rounded-xl shadow-lg shadow-primary-container/30 flex items-center justify-center overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A professional and soft minimalist app logo for Heartline, featuring a stylized warm pink heart merging into a soft blue pulse line. The logo is rendered in a high-gloss, 3D claymorphism style with gentle highlights and soft ambient shadows, set against a pristine warm white background. The aesthetic is clean, modern, and evokes a sense of digital intimacy and emotional connection." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA-qO1gWUDwnoT0lMK_wsJNYEN6xD2bUZoN6UaFq0Bl52FuCMR4ZiY2kRYgkQ03BnMLfa4z47kkHCqgsMLFjtmS7A0IjbC9iO6MhK04Jjd7_lRFLIpqJB2HV_nEg6LfyipdL9ugZ2g-L9oX2FHyCay7NuzKtM8lI7N6KX8Sr0_-3ZRym1Jm3gvFuEcn5M5T_WRmdp6FQ5Sg8ok76O-bQKP993PPrUa3mXDonZSYPOl_9ifknfliKwJq36yIQGP2DTvT7sddf3oXebT0"/>
+</div>
+<h1 class="font-h1 text-h1 text-primary tracking-tight">Heartline</h1>
+<p class="font-body-md text-on-surface-variant mt-xs">连接跨越距离的爱</p>
+</div>
+<!-- Form Section -->
+<div class="w-full bg-white/60 backdrop-blur-xl p-md rounded-xl shadow-xl shadow-primary-container/10 border border-white">
+<!-- Tab Navigation -->
+<div class="flex gap-md mb-lg border-b border-surface-variant">
+<button class="pb-base border-b-2 border-primary font-h2 text-h2 text-primary transition-all">登录</button>
+<button class="pb-base border-b-2 border-transparent font-h2 text-h2 text-outline hover:text-primary transition-all">注册</button>
+</div>
+<div class="space-y-md">
+<!-- Phone Input Field -->
+<div class="space-y-xs">
+<label class="font-label-caps text-label-caps text-outline px-base">手机号码</label>
+<div class="relative flex items-center bg-surface-container-lowest border-2 border-transparent focus-within:border-primary-container focus-within:shadow-[0_0_15px_rgba(255,181,197,0.4)] rounded-lg transition-all overflow-hidden group">
+<!-- Flag Selector -->
+<div class="flex items-center gap-xs px-sm py-md border-r border-surface-variant hover:bg-surface-container transition-colors cursor-pointer">
+<span class="text-2xl">🇨🇳</span>
+<span class="font-body-md text-on-surface">+86</span>
+<span class="material-symbols-outlined text-[18px] text-outline">expand_more</span>
+</div>
+<input class="w-full bg-transparent border-none focus:ring-0 font-body-lg text-on-surface px-md py-md placeholder:text-outline-variant" placeholder="请输入您的手机号" type="tel"/>
+</div>
+</div>
+<!-- Next Button -->
+<button class="w-full bg-gradient-to-r from-primary-container to-[#ff9eb3] text-on-primary-container font-h2 py-md rounded-lg shadow-lg shadow-primary-container/40 active:scale-[0.98] transition-all flex items-center justify-center gap-sm">
+                    下一步
+                    <span class="material-symbols-outlined font-bold">arrow_forward</span>
+</button>
+<!-- Divider -->
+<div class="flex items-center gap-md py-md">
+<div class="h-[1px] w-full bg-surface-variant"></div>
+<span class="font-label-caps text-outline whitespace-nowrap">其他登录方式</span>
+<div class="h-[1px] w-full bg-surface-variant"></div>
+</div>
+<!-- Social Login Icons -->
+<div class="flex justify-center gap-lg">
+<button class="w-14 h-14 rounded-full bg-white flex items-center justify-center shadow-md hover:shadow-lg hover:scale-110 active:scale-95 transition-all text-[#07C160]">
+<svg class="w-7 h-7 fill-current" viewbox="0 0 24 24">
+<path d="M8.281 12.607c-.504 0-.91-.406-.91-.911 0-.505.406-.911.91-.911.505 0 .911.406.911.911 0 .505-.406.911-.911.911zm7.438 0c-.504 0-.91-.406-.91-.911 0-.505.406-.911.91-.911.505 0 .911.406.911.911 0 .505-.406.911-.911.911zm-3.69-7.731c-5.068 0-9.176 3.659-9.176 8.172 0 2.518 1.275 4.776 3.284 6.303l-.841 2.514 2.879-1.507c.594.164 1.213.251 1.854.251 5.068 0 9.176-3.659 9.176-8.172s-4.108-8.172-9.176-8.172z"></path>
+</svg>
+</button>
+<button class="w-14 h-14 rounded-full bg-white flex items-center justify-center shadow-md hover:shadow-lg hover:scale-110 active:scale-95 transition-all text-[#E6162D]">
+<svg class="w-7 h-7 fill-current" viewbox="0 0 24 24">
+<path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm6.066 11.236c.012.304-.002.583-.042.836h-6.024c.063 1.942 1.493 2.942 3.328 2.942 1.264 0 2.222-.444 2.853-1.127l1.353 1.053c-1.107 1.346-2.586 1.996-4.516 1.996-3.141 0-5.321-2.213-5.321-5.176 0-3.08 2.29-5.186 5.105-5.186 2.805 0 4.613 2.053 4.613 4.636 0 .002-.012.012-.012.012l1.362.014zm-4.364-2.81c-1.554 0-2.613 1.042-2.816 2.291h5.576c-.053-1.258-1.206-2.291-2.76-2.291z"></path>
+</svg>
+</button>
+<button class="w-14 h-14 rounded-full bg-white flex items-center justify-center shadow-md hover:shadow-lg hover:scale-110 active:scale-95 transition-all text-[#1D9BF0]">
+<svg class="w-7 h-7 fill-current" viewbox="0 0 24 24">
+<path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.84 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"></path>
+</svg>
+</button>
+</div>
+</div>
+</div>
+<!-- Footer Links -->
+<div class="mt-lg text-center space-y-sm">
+<p class="font-body-md text-outline">
+                登录即代表您同意 
+                <a class="text-primary font-semibold hover:underline" href="#">服务协议</a> 
+                和 
+                <a class="text-primary font-semibold hover:underline" href="#">隐私政策</a>
+</p>
+<div class="flex items-center justify-center gap-md">
+<button class="flex items-center gap-xs font-label-caps text-outline hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[16px]">language</span>
+                    简体中文
+                </button>
+<div class="w-[1px] h-3 bg-surface-variant"></div>
+<button class="font-label-caps text-outline hover:text-primary transition-colors">遇到问题？</button>
+</div>
+</div>
+</main>
+<!-- Floating Mood Chips for decorative touch -->
+<div class="absolute bottom-10 left-10 hidden md:flex items-center gap-sm bg-white/80 backdrop-blur-md px-md py-base rounded-full shadow-sm border border-primary-container/20">
+<span class="text-lg">💖</span>
+<span class="font-label-caps text-primary">想你啦</span>
+</div>
+<div class="absolute top-20 right-20 hidden md:flex items-center gap-sm bg-white/80 backdrop-blur-md px-md py-base rounded-full shadow-sm border border-secondary-container/20">
+<span class="text-lg">😴</span>
+<span class="font-label-caps text-secondary">准备睡觉</span>
+</div>
+</body></html>

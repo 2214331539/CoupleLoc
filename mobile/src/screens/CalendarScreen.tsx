@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { useEffect, useMemo, useState } from "react";
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 
 import {
   buildLocationWebSocketUrl,
@@ -7,29 +7,63 @@ import {
   deleteCalendarEvent,
   listCalendarEvents,
 } from "../api/client";
+import { AppHeader, Card, IconBubble, PillButton } from "../components/HeartlineUI";
+import { SafeScreen } from "../components/SafeScreen";
+import { colors, radius, spacing } from "../theme";
 import type { CalendarEvent, RealtimeEvent } from "../types";
 
 type Props = {
   token: string;
 };
 
-function defaultStartValue() {
-  return new Date(Date.now() + 60 * 60 * 1000).toISOString();
+const timeOptions = ["09:00", "14:00", "19:00", "21:00"];
+
+function monthTitle(date: Date) {
+  return `${date.getFullYear()}年 ${date.getMonth() + 1}月`;
+}
+
+function sameDate(a: Date, b: Date) {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
+
+function makeStartAt(date: Date, time: string) {
+  const [hours, minutes] = time.split(":").map(Number);
+  const value = new Date(date);
+  value.setHours(hours ?? 19, minutes ?? 0, 0, 0);
+  return value.toISOString();
+}
+
+function eventTone(event: CalendarEvent) {
+  const text = `${event.title} ${event.notes ?? ""}`;
+  if (/飞|航班|机票|车票|travel|flight/i.test(text)) {
+    return "secondary" as const;
+  }
+  if (/纪念|相恋|生日|anniversary/i.test(text)) {
+    return "primary" as const;
+  }
+  return "mint" as const;
 }
 
 export function CalendarScreen({ token }: Props) {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
-  const [startsAt, setStartsAt] = useState(defaultStartValue());
-  const [status, setStatus] = useState("Loading events");
+  const [selectedDate, setSelectedDate] = useState(() => new Date());
+  const [selectedTime, setSelectedTime] = useState("19:00");
+  const [status, setStatus] = useState("正在加载日历");
+  const [showForm, setShowForm] = useState(false);
+  const [month, setMonth] = useState(() => new Date());
 
   const reload = async () => {
     try {
       setEvents(await listCalendarEvents());
-      setStatus("Ready");
+      setStatus("日历已同步");
     } catch (err) {
-      setStatus(err instanceof Error ? err.message : "Failed to load events");
+      setStatus(err instanceof Error ? err.message : "日历加载失败");
     }
   };
 
@@ -45,197 +79,496 @@ export function CalendarScreen({ token }: Props) {
         if (payload.type === "calendar.event_changed") {
           reload();
         }
-        if (payload.type === "battery.low") {
-          setStatus("Partner battery is low");
-        }
       } catch {
-        setStatus("Received an invalid realtime message");
+        setStatus("收到无法识别的日历消息");
       }
     };
-
     const keepAlive = setInterval(() => {
       if (socket.readyState === WebSocket.OPEN) {
         socket.send("ping");
       }
     }, 25_000);
-
     return () => {
       clearInterval(keepAlive);
       socket.close();
     };
   }, [token]);
 
-  const addEvent = async () => {
-    const parsed = Date.parse(startsAt);
-    if (!title.trim() || Number.isNaN(parsed)) {
-      setStatus("Title and valid ISO time are required");
+  const days = useMemo(() => {
+    const first = new Date(month.getFullYear(), month.getMonth(), 1);
+    const total = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
+    const cells: Array<number | null> = [];
+    for (let i = 0; i < first.getDay(); i += 1) {
+      cells.push(null);
+    }
+    for (let day = 1; day <= total; day += 1) {
+      cells.push(day);
+    }
+    while (cells.length % 7 !== 0) {
+      cells.push(null);
+    }
+    return cells;
+  }, [month]);
+
+  const monthEvents = useMemo(
+    () =>
+      events.filter((event) => {
+        const starts = new Date(event.starts_at);
+        return starts.getFullYear() === month.getFullYear() && starts.getMonth() === month.getMonth();
+      }),
+    [events, month]
+  );
+
+  const upcoming = useMemo(
+    () =>
+      [...events]
+        .filter((event) => +new Date(event.starts_at) >= Date.now() - 24 * 60 * 60 * 1000)
+        .sort((a, b) => +new Date(a.starts_at) - +new Date(b.starts_at)),
+    [events]
+  );
+
+  const submit = async () => {
+    if (!title.trim()) {
+      setStatus("请输入事件标题");
       return;
     }
     try {
-      const created = await createCalendarEvent({
+      const event = await createCalendarEvent({
         title: title.trim(),
         notes: notes.trim() || null,
-        starts_at: new Date(parsed).toISOString()
+        starts_at: makeStartAt(selectedDate, selectedTime)
       });
-      setEvents((items) => [...items, created].sort((a, b) => a.starts_at.localeCompare(b.starts_at)));
+      setEvents((items) => [...items, event]);
       setTitle("");
       setNotes("");
-      setStartsAt(defaultStartValue());
-      setStatus("Event added");
+      setShowForm(false);
+      setStatus("事件已添加");
     } catch (err) {
-      setStatus(err instanceof Error ? err.message : "Failed to add event");
+      setStatus(err instanceof Error ? err.message : "添加事件失败");
     }
   };
 
-  const removeEvent = async (eventId: string) => {
+  const remove = async (eventId: string) => {
     try {
       await deleteCalendarEvent(eventId);
       setEvents((items) => items.filter((item) => item.id !== eventId));
-      setStatus("Event deleted");
+      setStatus("事件已删除");
     } catch (err) {
-      setStatus(err instanceof Error ? err.message : "Failed to delete event");
+      setStatus(err instanceof Error ? err.message : "删除事件失败");
     }
   };
 
+  const moveMonth = (offset: number) => {
+    setMonth((value) => new Date(value.getFullYear(), value.getMonth() + offset, 1));
+  };
+
+  const pickDay = (day: number) => {
+    const next = new Date(month.getFullYear(), month.getMonth(), day);
+    setSelectedDate(next);
+    setShowForm(true);
+  };
+
   return (
-    <SafeAreaView style={styles.screen}>
+    <SafeScreen style={styles.screen}>
+      <AppHeader />
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Shared Calendar</Text>
-          <Text style={styles.subtitle}>Plans, visits, anniversaries, and reminders</Text>
+        <Card style={styles.calendarCard}>
+          <View style={styles.monthHeader}>
+            <Text style={styles.monthTitle}>{monthTitle(month)}</Text>
+            <View style={styles.monthButtons}>
+              <Pressable onPress={() => moveMonth(-1)} style={styles.monthButton}>
+                <Text style={styles.monthButtonText}>‹</Text>
+              </Pressable>
+              <Pressable onPress={() => moveMonth(1)} style={styles.monthButton}>
+                <Text style={styles.monthButtonText}>›</Text>
+              </Pressable>
+            </View>
+          </View>
+
+          <View style={styles.weekRow}>
+            {["日", "一", "二", "三", "四", "五", "六"].map((day) => (
+              <Text key={day} style={styles.weekday}>
+                {day}
+              </Text>
+            ))}
+          </View>
+
+          <View style={styles.dayGrid}>
+            {days.map((day, index) => {
+              const cellDate = day ? new Date(month.getFullYear(), month.getMonth(), day) : null;
+              const selected = cellDate ? sameDate(cellDate, selectedDate) : false;
+              const dayEvents = day
+                ? monthEvents.filter((event) => new Date(event.starts_at).getDate() === day)
+                : [];
+              return (
+                <Pressable
+                  disabled={!day}
+                  key={`${day ?? "empty"}-${index}`}
+                  onPress={() => day && pickDay(day)}
+                  style={[styles.dayCell, selected && styles.dayCellSelected]}
+                >
+                  {day ? <Text style={[styles.dayText, selected && styles.dayTextSelected]}>{day}</Text> : null}
+                  {dayEvents.slice(0, 2).map((event) => (
+                    <View
+                      key={event.id}
+                      style={[
+                        styles.eventDot,
+                        eventTone(event) === "secondary" && styles.eventDotSecondary,
+                        eventTone(event) === "mint" && styles.eventDotMint,
+                      ]}
+                    />
+                  ))}
+                </Pressable>
+              );
+            })}
+          </View>
+
+          <View style={styles.legendRow}>
+            <Legend color={colors.secondary} label="见面日" />
+            <Legend color={colors.primaryStrong} label="纪念日" />
+            <Legend color={colors.tertiary} label="飞行日" />
+          </View>
+        </Card>
+
+        <View style={styles.sectionRow}>
+          <Text style={styles.sectionTitle}>近期动态</Text>
+          <PillButton
+            label={showForm ? "收起" : "+ 添加事件"}
+            onPress={() => setShowForm((value) => !value)}
+            style={styles.addButton}
+          />
         </View>
 
-        <View style={styles.form}>
-          <TextInput
-            onChangeText={setTitle}
-            placeholder="Event title"
-            style={styles.input}
-            value={title}
-          />
-          <TextInput
-            onChangeText={setStartsAt}
-            placeholder="Start time ISO"
-            style={styles.input}
-            value={startsAt}
-          />
-          <TextInput
-            multiline
-            onChangeText={setNotes}
-            placeholder="Notes"
-            style={[styles.input, styles.notesInput]}
-            value={notes}
-          />
-          <Pressable onPress={addEvent} style={styles.primaryButton}>
-            <Text style={styles.primaryButtonText}>Add event</Text>
-          </Pressable>
-        </View>
+        {showForm ? (
+          <Card style={styles.formCard}>
+            <View style={styles.selectedDateBox}>
+              <Text style={styles.selectedDateLabel}>已选择</Text>
+              <Text style={styles.selectedDateText}>
+                {selectedDate.toLocaleDateString()} {selectedTime}
+              </Text>
+            </View>
+            <View style={styles.timeRow}>
+              {timeOptions.map((time) => (
+                <Pressable
+                  key={time}
+                  onPress={() => setSelectedTime(time)}
+                  style={[styles.timeChip, selectedTime === time && styles.timeChipActive]}
+                >
+                  <Text style={[styles.timeText, selectedTime === time && styles.timeTextActive]}>
+                    {time}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+            <TextInput
+              onChangeText={setTitle}
+              placeholder="事件标题，例如 下一次飞行"
+              placeholderTextColor={colors.outline}
+              style={styles.input}
+              value={title}
+            />
+            <TextInput
+              onChangeText={setNotes}
+              placeholder="备注，例如 航班号 CA937 | 13:45 起飞"
+              placeholderTextColor={colors.outline}
+              style={styles.input}
+              value={notes}
+            />
+            <PillButton label="保存事件" onPress={submit} />
+          </Card>
+        ) : null}
 
         <Text style={styles.status}>{status}</Text>
 
-        <View style={styles.list}>
-          {events.map((event) => (
-            <View key={event.id} style={styles.item}>
-              <View style={styles.itemText}>
-                <Text style={styles.itemTitle}>{event.title}</Text>
-                <Text style={styles.itemMeta}>{new Date(event.starts_at).toLocaleString()}</Text>
-                {event.notes ? <Text style={styles.itemNotes}>{event.notes}</Text> : null}
-              </View>
-              <Pressable onPress={() => removeEvent(event.id)} style={styles.deleteButton}>
-                <Text style={styles.deleteButtonText}>Delete</Text>
-              </Pressable>
-            </View>
-          ))}
+        <View style={styles.eventList}>
+          {upcoming.length ? (
+            upcoming.map((event) => (
+              <EventCard key={event.id} event={event} onDelete={() => remove(event.id)} />
+            ))
+          ) : (
+            <Card>
+              <Text style={styles.emptyText}>还没有计划，添加一个见面日吧。</Text>
+            </Card>
+          )}
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </SafeScreen>
+  );
+}
+
+function Legend({ color, label }: { color: string; label: string }) {
+  return (
+    <View style={styles.legend}>
+      <View style={[styles.legendDot, { backgroundColor: color }]} />
+      <Text style={styles.legendText}>{label}</Text>
+    </View>
+  );
+}
+
+function EventCard({ event, onDelete }: { event: CalendarEvent; onDelete: () => void }) {
+  const tone = eventTone(event);
+  const starts = new Date(event.starts_at);
+  const diffDays = Math.ceil((+starts - Date.now()) / (24 * 60 * 60 * 1000));
+  return (
+    <Card
+      style={[
+        styles.eventCard,
+        tone === "secondary" && styles.eventCardSecondary,
+        tone === "mint" && styles.eventCardMint,
+      ]}
+    >
+      <IconBubble
+        icon={tone === "secondary" ? "✈" : tone === "primary" ? "▣" : "♨"}
+        tone={tone === "secondary" ? "secondary" : tone === "mint" ? "mint" : "primary"}
+      />
+      <View style={styles.eventText}>
+        <View style={styles.eventTitleRow}>
+          <Text style={styles.eventTitle}>{event.title}</Text>
+          <Text style={styles.eventBadge}>
+            {diffDays > 0 ? `${diffDays}天后` : starts.toLocaleDateString()}
+          </Text>
+        </View>
+        {event.notes ? <Text style={styles.eventNotes}>{event.notes}</Text> : null}
+        <Text style={styles.eventMeta}>{starts.toLocaleString()}</Text>
+      </View>
+      <Pressable onPress={onDelete} style={styles.deleteButton}>
+        <Text style={styles.deleteText}>×</Text>
+      </Pressable>
+    </Card>
   );
 }
 
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#f7f7f2"
+    backgroundColor: colors.background
   },
   content: {
-    padding: 16,
-    gap: 16
+    padding: spacing.lg,
+    gap: spacing.lg,
+    paddingBottom: spacing.xl
   },
-  header: {
-    gap: 4
+  calendarCard: {
+    gap: spacing.lg
   },
-  title: {
-    color: "#1f211d",
+  monthHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between"
+  },
+  monthTitle: {
+    color: colors.primaryStrong,
     fontSize: 28,
-    fontWeight: "800"
+    fontWeight: "900"
   },
-  subtitle: {
-    color: "#62645d"
+  monthButtons: {
+    flexDirection: "row",
+    gap: spacing.sm
   },
-  form: {
-    gap: 10
-  },
-  input: {
-    minHeight: 48,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#d5d7ca",
-    backgroundColor: "#ffffff",
-    color: "#1f211d",
-    paddingHorizontal: 12
-  },
-  notesInput: {
-    minHeight: 76,
-    paddingTop: 12
-  },
-  primaryButton: {
-    minHeight: 48,
+  monthButton: {
+    width: 42,
+    height: 42,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 8,
-    backgroundColor: "#2f6f64"
+    borderRadius: 21,
+    backgroundColor: colors.surfaceContainer
   },
-  primaryButtonText: {
-    color: "#ffffff",
+  monthButtonText: {
+    color: colors.text,
+    fontSize: 26,
+    fontWeight: "900"
+  },
+  weekRow: {
+    flexDirection: "row"
+  },
+  weekday: {
+    flex: 1,
+    color: colors.muted,
+    textAlign: "center",
+    fontWeight: "900"
+  },
+  dayGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap"
+  },
+  dayCell: {
+    width: `${100 / 7}%`,
+    minHeight: 52,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 3,
+    borderRadius: radius.md
+  },
+  dayCellSelected: {
+    backgroundColor: colors.primarySoft
+  },
+  dayText: {
+    color: colors.text,
+    fontSize: 18,
+    fontWeight: "700"
+  },
+  dayTextSelected: {
+    color: colors.primaryStrong,
+    fontWeight: "900"
+  },
+  eventDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: colors.primaryStrong
+  },
+  eventDotSecondary: {
+    backgroundColor: colors.secondary
+  },
+  eventDotMint: {
+    backgroundColor: colors.tertiary
+  },
+  legendRow: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    borderTopWidth: 1,
+    borderTopColor: colors.line,
+    paddingTop: spacing.md
+  },
+  legend: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm
+  },
+  legendDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5
+  },
+  legendText: {
+    color: colors.muted,
     fontWeight: "800"
+  },
+  sectionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between"
+  },
+  sectionTitle: {
+    color: colors.text,
+    fontSize: 28,
+    fontWeight: "900"
+  },
+  addButton: {
+    minHeight: 48
+  },
+  formCard: {
+    gap: spacing.md
+  },
+  selectedDateBox: {
+    borderRadius: radius.lg,
+    backgroundColor: colors.surfaceWarm,
+    padding: spacing.md
+  },
+  selectedDateLabel: {
+    color: colors.muted,
+    fontWeight: "800"
+  },
+  selectedDateText: {
+    color: colors.primaryStrong,
+    fontSize: 18,
+    fontWeight: "900",
+    marginTop: 3
+  },
+  timeRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm
+  },
+  timeChip: {
+    borderRadius: radius.full,
+    backgroundColor: colors.surfaceContainer,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm
+  },
+  timeChipActive: {
+    backgroundColor: colors.primary
+  },
+  timeText: {
+    color: colors.muted,
+    fontWeight: "900"
+  },
+  timeTextActive: {
+    color: colors.primaryDark
+  },
+  input: {
+    minHeight: 52,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surfaceContainer,
+    color: colors.text,
+    paddingHorizontal: spacing.lg
   },
   status: {
-    color: "#62645d"
-  },
-  list: {
-    gap: 10
-  },
-  item: {
-    flexDirection: "row",
-    gap: 12,
-    borderRadius: 8,
-    backgroundColor: "#ffffff",
-    padding: 12
-  },
-  itemText: {
-    flex: 1,
-    gap: 4
-  },
-  itemTitle: {
-    color: "#1f211d",
-    fontSize: 16,
+    color: colors.muted,
     fontWeight: "800"
   },
-  itemMeta: {
-    color: "#62645d"
+  eventList: {
+    gap: spacing.lg
   },
-  itemNotes: {
-    color: "#1f211d"
+  eventCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    borderColor: colors.primarySoft
+  },
+  eventCardSecondary: {
+    borderColor: colors.secondarySoft
+  },
+  eventCardMint: {
+    borderColor: colors.tertiarySoft
+  },
+  eventText: {
+    flex: 1,
+    gap: spacing.xs
+  },
+  eventTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm
+  },
+  eventTitle: {
+    flex: 1,
+    color: colors.text,
+    fontSize: 17,
+    fontWeight: "900"
+  },
+  eventBadge: {
+    overflow: "hidden",
+    borderRadius: radius.full,
+    backgroundColor: colors.primarySoft,
+    color: colors.primaryStrong,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+    fontSize: 12,
+    fontWeight: "900"
+  },
+  eventNotes: {
+    color: colors.muted,
+    fontSize: 15
+  },
+  eventMeta: {
+    color: colors.secondary,
+    fontWeight: "800"
   },
   deleteButton: {
-    alignSelf: "center",
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#b42318",
-    paddingHorizontal: 10,
-    paddingVertical: 8
+    width: 36,
+    height: 36,
+    alignItems: "center",
+    justifyContent: "center"
   },
-  deleteButtonText: {
-    color: "#b42318",
+  deleteText: {
+    color: colors.danger,
+    fontSize: 26,
+    fontWeight: "900"
+  },
+  emptyText: {
+    color: colors.muted,
+    textAlign: "center",
     fontWeight: "800"
   }
 });

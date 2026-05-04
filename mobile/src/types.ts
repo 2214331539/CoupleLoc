@@ -1,6 +1,7 @@
 export type User = {
   id: string;
   username: string;
+  phone_number: string | null;
   display_name: string;
 };
 
@@ -24,6 +25,11 @@ export type PairingInvite = {
 
 export type SharingSettings = {
   enabled: boolean;
+  mode: "always" | "one_hour" | "foreground" | "paused";
+  expires_at: string | null;
+  share_battery: boolean;
+  share_distance: boolean;
+  precise_location: boolean;
   updated_at: string;
 };
 

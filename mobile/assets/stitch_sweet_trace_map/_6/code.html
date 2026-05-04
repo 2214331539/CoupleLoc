@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+
+<html class="light" lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&amp;family=Be+Vietnam+Pro:wght@400;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-error": "#ffffff",
+                    "secondary": "#42617d",
+                    "on-primary-fixed": "#370c19",
+                    "on-primary-fixed-variant": "#6c3644",
+                    "secondary-fixed": "#cde5ff",
+                    "surface-bright": "#fef8fa",
+                    "on-error-container": "#93000a",
+                    "secondary-fixed-dim": "#aacaea",
+                    "on-secondary-container": "#43627e",
+                    "surface-variant": "#e7e1e3",
+                    "outline": "#847376",
+                    "surface-container-low": "#f8f2f4",
+                    "surface-container": "#f2ecee",
+                    "surface-container-high": "#ece7e9",
+                    "on-tertiary-fixed": "#06210d",
+                    "tertiary-fixed": "#cbebca",
+                    "primary": "#874d5b",
+                    "surface-container-highest": "#e7e1e3",
+                    "on-tertiary-container": "#3f5b42",
+                    "on-surface-variant": "#514346",
+                    "inverse-primary": "#fcb2c2",
+                    "surface-dim": "#ded9db",
+                    "on-secondary-fixed-variant": "#294964",
+                    "tertiary": "#49654c",
+                    "inverse-on-surface": "#f5eff1",
+                    "on-tertiary": "#ffffff",
+                    "primary-container": "#ffb5c5",
+                    "on-surface": "#1d1b1d",
+                    "on-primary": "#ffffff",
+                    "tertiary-container": "#b2d1b2",
+                    "outline-variant": "#d6c2c4",
+                    "surface-tint": "#874d5b",
+                    "background": "#fef8fa",
+                    "primary-fixed": "#ffd9e0",
+                    "tertiary-fixed-dim": "#afcfaf",
+                    "surface": "#fef8fa",
+                    "inverse-surface": "#323031",
+                    "on-primary-container": "#7b4351",
+                    "surface-container-lowest": "#ffffff",
+                    "on-secondary-fixed": "#001d32",
+                    "error": "#ba1a1a",
+                    "secondary-container": "#bddefe",
+                    "on-secondary": "#ffffff",
+                    "primary-fixed-dim": "#fcb2c2",
+                    "on-background": "#1d1b1d",
+                    "on-tertiary-fixed-variant": "#324d35",
+                    "error-container": "#ffdad6"
+            },
+            "borderRadius": {
+                    "DEFAULT": "1rem",
+                    "lg": "2rem",
+                    "xl": "3rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "md": "24px",
+                    "gutter": "16px",
+                    "xl": "64px",
+                    "base": "8px",
+                    "xs": "4px",
+                    "lg": "40px",
+                    "container-margin": "20px",
+                    "sm": "12px"
+            },
+            "fontFamily": {
+                    "h2": ["Plus Jakarta Sans"],
+                    "label-caps": ["Be Vietnam Pro"],
+                    "h1": ["Plus Jakarta Sans"],
+                    "body-md": ["Be Vietnam Pro"],
+                    "body-lg": ["Be Vietnam Pro"]
+            },
+            "fontSize": {
+                    "h2": ["24px", {"lineHeight": "1.3", "fontWeight": "600"}],
+                    "label-caps": ["12px", {"lineHeight": "1.0", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "h1": ["32px", {"lineHeight": "1.2", "fontWeight": "700"}],
+                    "body-md": ["16px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                    "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+      .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      }
+      .bubble-shadow-primary {
+        box-shadow: 0 10px 20px -5px rgba(255, 181, 197, 0.3);
+      }
+      .bubble-shadow-secondary {
+        box-shadow: 0 10px 20px -5px rgba(66, 97, 125, 0.15);
+      }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-md min-h-screen flex flex-col items-center">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-stone-50/90 dark:bg-stone-900/90 backdrop-blur-xl rounded-b-[32px] shadow-lg shadow-rose-200/20 dark:shadow-rose-900/10 h-16 flex justify-between items-center px-6">
+<div class="flex items-center gap-3">
+<div class="relative">
+<img alt="Partner Profile" class="w-10 h-10 rounded-full object-cover border-2 border-primary-container" data-alt="A warm and gentle close-up portrait of a young woman with a kind smile, set against a soft-focus interior background. The lighting is natural and golden, creating a sense of intimacy and affection. The overall aesthetic matches a soft, high-end UI design with pastel tones and a clean, minimalist feel suitable for a long-distance relationship app." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCDrHzAlgN-FNW7gnERjywDYRB_0E0ID8WXMXpuHjSoZv4ndIBS0cINDFzt6zc5VBPzDxQECkbeSRWEUXHtygQJLrFpThQu0Ydelep9q-EQ8_7pSB_b0TEjXDPgMwiQ1d2T8R4PihO9aZIbr-oe6PV5UxRfbJB5mEuSlPBksozrjq2g2B99BbCacvO-oTZ1gVYsWAywDypGcmJ5l3qdK1MhkDS9OlvqDLZL_4B9WUgmrzrtb0T0480uZPfbkPRSSffxsNXsHvUHvrUU"/>
+<div class="absolute bottom-0 right-0 w-3 h-3 bg-tertiary rounded-full border-2 border-white ring-2 ring-tertiary-container animate-pulse"></div>
+</div>
+<div>
+<h1 class="text-primary font-h2 text-[18px]">小雨</h1>
+<p class="text-[10px] font-label-caps text-secondary opacity-70">正在输入...</p>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="text-rose-300 dark:text-rose-200 hover:opacity-80 transition-opacity active:scale-[0.97]">
+<span class="material-symbols-outlined" data-icon="favorite">favorite</span>
+</button>
+<button class="text-stone-400 dark:text-stone-500 hover:opacity-80 transition-opacity active:scale-[0.97]">
+<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
+</button>
+</div>
+</header>
+<!-- Chat Canvas -->
+<main class="flex-1 w-full max-w-2xl px-gutter pt-24 pb-48 flex flex-col gap-6">
+<!-- Date Marker -->
+<div class="flex justify-center">
+<span class="bg-surface-container px-4 py-1 rounded-full text-[12px] font-label-caps text-outline">今天 14:30</span>
+</div>
+<!-- Incoming Message Bubble -->
+<div class="flex flex-col items-start gap-2 max-w-[85%]">
+<div class="bg-secondary-container text-on-secondary-container px-5 py-3 rounded-[24px] rounded-tl-none bubble-shadow-secondary">
+<p class="text-body-md font-body-md">嘿，你在干嘛呢？突然好想你 ❤️</p>
+</div>
+<span class="text-[10px] text-outline px-2">14:32</span>
+</div>
+<!-- Info Snippet: Flight Update -->
+<div class="mx-auto w-full max-w-sm bg-white/60 border border-secondary/10 rounded-xl p-4 flex items-center gap-4 shadow-sm">
+<div class="w-10 h-10 bg-secondary-fixed flex items-center justify-center rounded-full text-secondary">
+<span class="material-symbols-outlined" data-icon="flight_takeoff">flight_takeoff</span>
+</div>
+<div class="flex-1">
+<h4 class="text-sm font-bold text-secondary">航班更新</h4>
+<p class="text-[12px] text-outline">小雨的航班预计在 3 小时后起飞。</p>
+</div>
+<span class="material-symbols-outlined text-secondary opacity-40" data-icon="chevron_right">chevron_right</span>
+</div>
+<!-- Outgoing Message Bubble -->
+<div class="flex flex-col items-end gap-2 max-w-[85%] self-end">
+<div class="bg-primary-container text-on-primary-container px-5 py-3 rounded-[24px] rounded-tr-none bubble-shadow-primary">
+<p class="text-body-md font-body-md">我也在想你！刚开完会，正准备去吃点东西。🍔</p>
+</div>
+<span class="text-[10px] text-outline px-2">14:35</span>
+</div>
+<!-- Info Snippet: Photo Pin -->
+<div class="mx-auto w-full max-w-sm bg-white/60 border border-primary/10 rounded-xl p-3 flex flex-col gap-3 shadow-sm">
+<div class="flex items-center gap-2 px-1">
+<span class="material-symbols-outlined text-primary text-[18px]" data-icon="add_location_alt" style="font-variation-settings: 'FILL' 1;">add_location_alt</span>
+<span class="text-[12px] font-bold text-primary">添加了照片标记</span>
+</div>
+<div class="h-32 rounded-lg overflow-hidden relative">
+<img class="w-full h-full object-cover" data-alt="A cozy, sunlit cafe corner with two empty coffee cups on a wooden table, capturing a nostalgic and intimate atmosphere. The lighting is soft and warm, with a shallow depth of field. The image is designed to represent a shared memory between partners, adhering to the soft minimalism and tactile UI style of the app." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCd6n50XOy2Tf-wHZbfK5vH_3UY31I1LVJi464IMi8EL90CB37TAXJH4Z1tRnUmdQFmfhEQf7smcQQEpAfWRDFjZ8rohYAMox-OqKIU_hkgZGtgVRaleTgNg1klEnZYd4OwjmCAnTqWIZ7iZ_nN1eL1s6AJqhTGwyUTgH4vWvzYCDNocmB9xSwkISegmxAZSXIDTf-v9JnKCvZVHePxKKzHnaCX0gZeZKb19K7El-Gcs3y-L0MV1d6SK4YdLCGV9c3tXmmpiGkXcL4I"/>
+<div class="absolute inset-0 bg-black/10"></div>
+<div class="absolute bottom-2 left-2 bg-white/80 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-bold text-primary">
+                    我们最喜欢的咖啡馆
+                </div>
+</div>
+</div>
+<!-- Incoming Message Bubble -->
+<div class="flex flex-col items-start gap-2 max-w-[85%]">
+<div class="bg-secondary-container text-on-secondary-container px-5 py-3 rounded-[24px] rounded-tl-none bubble-shadow-secondary">
+<p class="text-body-md font-body-md">照片真好看！记得吃饱一点哦。我等下也要出门去机场了。🛫</p>
+</div>
+<span class="text-[10px] text-outline px-2">14:38</span>
+</div>
+</main>
+<!-- Bottom Controls Shell -->
+<div class="fixed bottom-0 w-full max-w-2xl bg-white/80 dark:bg-stone-950/80 backdrop-blur-2xl rounded-t-[40px] z-50 shadow-[0_-15px_40px_rgba(255,181,197,0.15)] flex flex-col gap-4 px-6 pt-4 pb-8 border-t border-rose-100/50">
+<!-- Quick Status Bar -->
+<div class="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+<button class="shrink-0 bg-primary-fixed text-on-primary-container px-4 py-2 rounded-full text-[13px] font-bold active:scale-95 transition-transform flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]" data-icon="favorite" style="font-variation-settings: 'FILL' 1;">favorite</span>
+                想你
+            </button>
+<button class="shrink-0 bg-secondary-fixed text-on-secondary-container px-4 py-2 rounded-full text-[13px] font-bold active:scale-95 transition-transform flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]" data-icon="directions_run">directions_run</span>
+                在路上
+            </button>
+<button class="shrink-0 bg-tertiary-fixed text-on-tertiary-container px-4 py-2 rounded-full text-[13px] font-bold active:scale-95 transition-transform flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]" data-icon="home" style="font-variation-settings: 'FILL' 1;">home</span>
+                平安到家
+            </button>
+</div>
+<!-- Chat Input Field -->
+<div class="flex items-center gap-3">
+<button class="text-outline hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="add_circle">add_circle</span>
+</button>
+<div class="flex-1 bg-surface-container rounded-full px-5 py-3 flex items-center">
+<input class="bg-transparent border-none focus:ring-0 w-full text-body-md placeholder:text-outline-variant" placeholder="给小雨留言..." type="text"/>
+<button class="text-outline">
+<span class="material-symbols-outlined" data-icon="sentiment_satisfied">sentiment_satisfied</span>
+</button>
+</div>
+<button class="w-12 h-12 bg-primary-container text-on-primary-container rounded-full flex items-center justify-center shadow-lg shadow-rose-200/40 active:scale-90 transition-transform">
+<span class="material-symbols-outlined" data-icon="send" style="font-variation-settings: 'FILL' 1;">send</span>
+</button>
+</div>
+</div>
+<!-- Bottom Navigation Bar (Contextual Check: We are in a sub-page, but Chat is a top-level tab) -->
+<!-- Applying Active State Logic: 'Chat' is the current destination -->
+<nav class="fixed bottom-0 w-full md:hidden pointer-events-none">
+<div class="flex justify-around items-center w-full max-w-md mx-auto px-4 pb-8 pt-4 pointer-events-auto">
+<!-- Map -->
+<div class="flex flex-col items-center justify-center text-stone-400 dark:text-stone-600 px-6 py-2 scale-100 transition-all duration-300">
+<span class="material-symbols-outlined" data-icon="map">map</span>
+<span class="font-['Plus_Jakarta_Sans'] text-[11px] font-bold uppercase tracking-widest mt-1">Map</span>
+</div>
+<!-- Chat (ACTIVE) -->
+<div class="flex flex-col items-center justify-center bg-rose-50 dark:bg-rose-900/20 text-rose-500 dark:text-rose-200 rounded-[24px] px-6 py-2 scale-105 transition-all duration-300">
+<span class="material-symbols-outlined" data-icon="chat_bubble" style="font-variation-settings: 'FILL' 1;">chat_bubble</span>
+<span class="font-['Plus_Jakarta_Sans'] text-[11px] font-bold uppercase tracking-widest mt-1">Chat</span>
+</div>
+<!-- Calendar -->
+<div class="flex flex-col items-center justify-center text-stone-400 dark:text-stone-600 px-6 py-2 scale-100 transition-all duration-300">
+<span class="material-symbols-outlined" data-icon="calendar_today">calendar_today</span>
+<span class="font-['Plus_Jakarta_Sans'] text-[11px] font-bold uppercase tracking-widest mt-1">Calendar</span>
+</div>
+<!-- Profile -->
+<div class="flex flex-col items-center justify-center text-stone-400 dark:text-stone-600 px-6 py-2 scale-100 transition-all duration-300">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-['Plus_Jakarta_Sans'] text-[11px] font-bold uppercase tracking-widest mt-1">Profile</span>
+</div>
+</div>
+</nav>
+<!-- Background Decoration -->
+<div class="fixed top-0 left-0 w-full h-full -z-10 opacity-30 pointer-events-none">
+<div class="absolute top-[10%] left-[5%] w-64 h-64 bg-primary-container rounded-full blur-[100px]"></div>
+<div class="absolute bottom-[20%] right-[10%] w-80 h-80 bg-secondary-container rounded-full blur-[120px]"></div>
+</div>
+</body></html>

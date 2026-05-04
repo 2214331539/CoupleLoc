@@ -17,6 +17,17 @@ class Settings(BaseSettings):
     auto_create_tables: bool = False
     low_battery_threshold: float = 0.2
 
+    sms_provider: str = "log"
+    sms_code_expire_minutes: int = 5
+    sms_resend_cooldown_seconds: int = 60
+    sms_sign_name: str | None = None
+    sms_template_code: str | None = None
+    sms_template_code_key: str = "code"
+    aliyun_sms_endpoint: str = "dysmsapi.aliyuncs.com"
+    aliyun_access_key_id: str | None = None
+    aliyun_access_key_secret: str | None = None
+    aliyun_sts_endpoint: str | None = None
+
     cors_origins: list[str] = ["*"]
 
     model_config = SettingsConfigDict(

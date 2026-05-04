@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+
+<html lang="zh"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&amp;family=Be+Vietnam+Pro:wght@400;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-error": "#ffffff",
+                    "secondary": "#42617d",
+                    "on-primary-fixed": "#370c19",
+                    "on-primary-fixed-variant": "#6c3644",
+                    "secondary-fixed": "#cde5ff",
+                    "surface-bright": "#fef8fa",
+                    "on-error-container": "#93000a",
+                    "secondary-fixed-dim": "#aacaea",
+                    "on-secondary-container": "#43627e",
+                    "surface-variant": "#e7e1e3",
+                    "outline": "#847376",
+                    "surface-container-low": "#f8f2f4",
+                    "surface-container": "#f2ecee",
+                    "surface-container-high": "#ece7e9",
+                    "on-tertiary-fixed": "#06210d",
+                    "tertiary-fixed": "#cbebca",
+                    "primary": "#874d5b",
+                    "surface-container-highest": "#e7e1e3",
+                    "on-tertiary-container": "#3f5b42",
+                    "on-surface-variant": "#514346",
+                    "inverse-primary": "#fcb2c2",
+                    "surface-dim": "#ded9db",
+                    "on-secondary-fixed-variant": "#294964",
+                    "tertiary": "#49654c",
+                    "inverse-on-surface": "#f5eff1",
+                    "on-tertiary": "#ffffff",
+                    "primary-container": "#ffb5c5",
+                    "on-surface": "#1d1b1d",
+                    "on-primary": "#ffffff",
+                    "tertiary-container": "#b2d1b2",
+                    "outline-variant": "#d6c2c4",
+                    "surface-tint": "#874d5b",
+                    "background": "#fef8fa",
+                    "primary-fixed": "#ffd9e0",
+                    "tertiary-fixed-dim": "#afcfaf",
+                    "surface": "#fef8fa",
+                    "inverse-surface": "#323031",
+                    "on-primary-container": "#7b4351",
+                    "surface-container-lowest": "#ffffff",
+                    "on-secondary-fixed": "#001d32",
+                    "error": "#ba1a1a",
+                    "secondary-container": "#bddefe",
+                    "on-secondary": "#ffffff",
+                    "primary-fixed-dim": "#fcb2c2",
+                    "on-background": "#1d1b1d",
+                    "on-tertiary-fixed-variant": "#324d35",
+                    "error-container": "#ffdad6"
+            },
+            "borderRadius": {
+                    "DEFAULT": "1rem",
+                    "lg": "2rem",
+                    "xl": "3rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "md": "24px",
+                    "gutter": "16px",
+                    "xl": "64px",
+                    "base": "8px",
+                    "xs": "4px",
+                    "lg": "40px",
+                    "container-margin": "20px",
+                    "sm": "12px"
+            },
+            "fontFamily": {
+                    "h2": ["Plus Jakarta Sans"],
+                    "label-caps": ["Be Vietnam Pro"],
+                    "h1": ["Plus Jakarta Sans"],
+                    "body-md": ["Be Vietnam Pro"],
+                    "body-lg": ["Be Vietnam Pro"]
+            },
+            "fontSize": {
+                    "h2": ["24px", {"lineHeight": "1.3", "fontWeight": "600"}],
+                    "label-caps": ["12px", {"lineHeight": "1.0", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "h1": ["32px", {"lineHeight": "1.2", "fontWeight": "700"}],
+                    "body-md": ["16px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                    "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .map-container {
+            background-image: radial-gradient(#ffb5c5 1px, transparent 1px);
+            background-size: 24px 24px;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-md min-h-screen flex flex-col items-center">
+<!-- TopAppBar -->
+<header class="fixed top-0 z-50 w-full px-6 py-4 h-16 flex justify-between items-center bg-stone-50/90 dark:bg-stone-900/90 backdrop-blur-xl rounded-b-[32px] shadow-lg shadow-rose-200/20 dark:shadow-rose-900/10">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full overflow-hidden border-2 border-primary-container">
+<img alt="Partner profile photo" class="w-full h-full object-cover" data-alt="A soft, warm-toned close-up portrait of a smiling woman with a friendly expression. The lighting is diffused and natural, set in a cozy indoor environment with pastel accents. The image is styled for a high-end emotional connection app with a soft minimalism aesthetic and creamy color grading." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAomrKaY1VtzrIehYPHBQ1Axp0PtYBTLO2P074OrF7EnOCvVzOMNVz9bgdQdHvgQ_h5G8-mSzcgfZNJXBJAAE8gsCAFuXVgWV5aSaJJdNGOqjiDUFjrzSbLaJOKfjCIunQgtAcfdAU6U4gL1WjF2UyhYQgRLBj8CtpoqCB2y459MsNVbWwwUjv92N3txc9nsrL2SBrNeI2Xku9GnmL6UpGNQM8gP6yyPchmpE7K0lXu1OEXtcfgcpJIeULpVJpSwXMNXYNo-K2HOz23"/>
+</div>
+<span class="text-2xl font-black italic text-rose-400 dark:text-rose-300 tracking-tighter font-h1">Heartline</span>
+</div>
+<button class="text-rose-300 dark:text-rose-200 hover:opacity-80 transition-opacity active:scale-[0.97] duration-200 ease-out">
+<span class="material-symbols-outlined" data-icon="favorite" style="font-variation-settings: 'FILL' 1;">favorite</span>
+</button>
+</header>
+<!-- Main Map Canvas -->
+<main class="relative w-full h-[884px] overflow-hidden pt-16">
+<!-- Mock Map Background -->
+<div class="absolute inset-0 bg-surface-container-lowest map-container" data-location="Shanghai" style="">
+<!-- Simulated Map Elements -->
+<div class="absolute inset-0 flex items-center justify-center opacity-10">
+<span class="material-symbols-outlined text-[400px]">map</span>
+</div>
+<!-- Pin 1: Heart Icon -->
+<div class="absolute top-[30%] left-[40%] animate-bounce transition-transform">
+<div class="relative group">
+<div class="w-12 h-12 bg-primary-container text-on-primary-container rounded-full shadow-lg flex items-center justify-center cursor-pointer border-4 border-white">
+<span class="material-symbols-outlined" data-icon="favorite" style="font-variation-settings: 'FILL' 1;">favorite</span>
+</div>
+<!-- Popover -->
+<div class="absolute bottom-16 left-1/2 -translate-x-1/2 w-48 bg-white p-2 rounded-lg shadow-xl border border-rose-100 transform scale-100 origin-bottom transition-all">
+<img alt="First Date" class="w-full h-32 object-cover rounded-md mb-2" data-alt="A nostalgic Polaroid-style photograph of two people holding hands in a sun-drenched park during autumn. Warm golden light filters through orange leaves, creating a soft, romantic atmosphere with a gentle bokeh effect. The overall feeling is one of intimate connection and memory preservation." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDf24Idya8o_WbjKotEk57t1umWUtzJgmMr8_1ujyYSQqHUOQ1QsguYYlIEJEkvonFX7A8oJT7NfkPsWWxFIO6qa-14hiisF-XD7hPNw7-UGKtyzvV7-p2OfWHL2l6NEMeVfS-ePDk9qoOZX3nEfKitqjeah6MCGjknjM-DJvkHwCgEuNcFkTM2fk6av68zE8NWPsqeGJJm7OZXPdZPknOu99CrB35uNyRG8MXwvZKdf69_3D_K32uDq3Zthspmhq0weF9Q6PC1yR2l"/>
+<div class="px-1">
+<p class="font-h2 text-[14px] text-primary">第一次约会</p>
+<p class="text-xs text-on-surface-variant">10月1日 • 外滩</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Pin 2: Camera Icon -->
+<div class="absolute top-[55%] left-[65%]">
+<div class="relative group">
+<div class="w-12 h-12 bg-secondary-container text-on-secondary-container rounded-full shadow-lg flex items-center justify-center cursor-pointer border-4 border-white active:scale-95 transition-all">
+<span class="material-symbols-outlined" data-icon="photo_camera" style="font-variation-settings: 'FILL' 1;">photo_camera</span>
+</div>
+<!-- Hidden Popover (Shown on click/hover sim) -->
+<div class="absolute bottom-16 left-1/2 -translate-x-1/2 w-48 bg-white p-2 rounded-lg shadow-xl border border-rose-100 opacity-90">
+<img alt="Travel memory" class="w-full h-32 object-cover rounded-md mb-2" data-alt="A cinematic capture of the Eiffel Tower at dusk with soft lavender and pink skies. The image has a dreamy, nostalgic filter applied, evoking the feeling of a cherished travel memory. The lighting is low-contrast and soft, matching the romantic aesthetic of the Heartline brand." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDVAft8KIb3RByIeNa0_8pRL6f-DxHDUgUJ9iksoqRjVn42BXpKG-mNADOSWNGQ38aAJ4LCHwRmvqWvmWrmHegtH9a8ZcYX0Kw8zWKTe3e01qYR169FAHDekHzPFcRbUrWh0WhsBep6u807Z3q7RKSnPS381r3X1jwh7e1brmBY3JNm3Npsmyep2MuHt__J9J2hEcksLjjgDmbqk9bUk0wK-y1Mqd4PREOjesSxOlA_J7CPK-hH0kBqdG2Q9VaUH2gBq253a2WuEJb0"/>
+<div class="px-1">
+<p class="font-h2 text-[14px] text-primary">那天的夕阳</p>
+<p class="text-xs text-on-surface-variant">9月15日 • 艺术区</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Horizontal Scroll: Memories of the Month -->
+<div class="absolute bottom-32 w-full px-6 z-20">
+<div class="flex flex-col gap-3">
+<h3 class="font-h2 text-primary px-2 flex items-center gap-2">
+<span class="material-symbols-outlined" data-icon="auto_awesome">auto_awesome</span>
+                    本月回忆
+                </h3>
+<div class="flex overflow-x-auto gap-4 no-scrollbar pb-4 -mx-6 px-6">
+<!-- Memory Card 1 -->
+<div class="flex-shrink-0 w-40 bg-white/60 backdrop-blur-md p-3 rounded-lg shadow-sm border border-white/50 active:scale-95 transition-transform">
+<div class="w-full h-40 rounded-md overflow-hidden mb-2">
+<img class="w-full h-full object-cover" data-alt="A creative close-up of a handwritten love note with a small dried flower next to it on a wooden table. The lighting is warm and soft, creating a nostalgic and sentimental mood. The color palette is composed of soft creams, browns, and muted pinks, reflecting a gentle, caring relationship." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDgR-hXDUgCzv-YbZAs6wfbRGaGgLrSKQfCcccVz_1zfkNCjN2tHE38Ne1nRu92In1QBJVMo6RLfQBto4bIvYGMJ71yQAkGmBrItgvAcj9gfAH6SLDnq7B8F9BOz0C6rmeDs8Cpp0_SgNRKL2ETYZkLk1VPPOt97aMfK_qK4hcRMwpE4O6RuDBd8s-m1aydMOuspfJqMpk-ZoBXsGyf_TnBvQXzSudtwOsN1TixlyRkYutEsif3vzNoGmdkMHmmac6hpWtMFqSxRa9a"/>
+</div>
+<p class="text-[14px] font-semibold text-on-surface">甜蜜的小贴纸</p>
+<p class="text-[12px] text-on-surface-variant">10月12日</p>
+</div>
+<!-- Memory Card 2 -->
+<div class="flex-shrink-0 w-40 bg-white/60 backdrop-blur-md p-3 rounded-lg shadow-sm border border-white/50 active:scale-95 transition-transform">
+<div class="w-full h-40 rounded-md overflow-hidden mb-2">
+<img class="w-full h-full object-cover" data-alt="Two cheerful friends or partners laughing together while sharing a dessert in a bright, modern cafe. The atmosphere is light and airy with soft pastel decor. High-key lighting creates a sense of joy and clarity, perfectly aligned with the app's minimalist and optimistic UI style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBOYFHs1q3kA_1I3Unp5Wv_Wh3BH-Tc6kvc_ZZRK1fNmrJQOPc_gJoCCTvm7ikSY4J7ieV0yhGjkOMmvNa5Tx1dghH2P6xRC_nAhZR5zL5_aZseLb4AjG3yQObdhDJX7lyyDRQelkyn338ccIEnwEkpVA9QKYrQRsxdtnl-KeogNHAQMRQ8LfK71r5hLQJxrWPlvFkZHe4Ms_uvPb9KsGy10PB3vRsRvy5iQXOEUmUcMi9cstqkj59B82rxrpRTfrYZ0Wn3LjJGFZlM"/>
+</div>
+<p class="text-[14px] font-semibold text-on-surface">下午茶时光</p>
+<p class="text-[12px] text-on-surface-variant">10月08日</p>
+</div>
+<!-- Memory Card 3 -->
+<div class="flex-shrink-0 w-40 bg-white/60 backdrop-blur-md p-3 rounded-lg shadow-sm border border-white/50 active:scale-95 transition-transform">
+<div class="w-full h-40 rounded-md overflow-hidden mb-2">
+<img class="w-full h-full object-cover" data-alt="A wide-angle shot of a couple's silhouettes standing on a beach at sunset. The sky is filled with vibrant orange, pink, and purple hues. The water reflects the colorful sky, creating a serene and expansive feeling of connection and peace. The visual style is high-end and emotionally evocative." src="https://lh3.googleusercontent.com/aida-public/AB6AXuARJiqsAQVpU_dy3Br0KXnyv3rPAIh0le6kSmzfLzVxNqItwdsf8IXnv2F0-uD_l220KEoeyhjX9Jqq6N9wGoL2VXtidDsCm7Pf2TMDuzI6j3Qn9R7Ymr6j7oKq5Nc6v3efumgXxxWX49nsCUw6H5DBi5OJeDC9ub_k8bRDZvAiN_fRjeSFXt0OyR9Y-QLQs_2nstmMPauNrPhbv1UnvpsstZr-C6J89yep3_5KgP0ad9qua88qEEwk7hfgn1JrAbJ17A7QtZOY-J-m"/>
+</div>
+<p class="text-[14px] font-semibold text-on-surface">海边的日落</p>
+<p class="text-[12px] text-on-surface-variant">10月05日</p>
+</div>
+</div>
+</div>
+</div>
+<!-- FAB: Add Memory -->
+<button class="fixed right-6 bottom-32 w-16 h-16 bg-gradient-to-br from-[#FFB5C5] to-rose-400 text-white rounded-full shadow-[0_10px_30px_rgba(255,181,197,0.5)] flex items-center justify-center z-30 active:scale-90 transition-transform">
+<span class="material-symbols-outlined text-[32px]" data-icon="add">add</span>
+</button>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full rounded-t-[40px] z-50 bg-white/80 dark:bg-stone-950/80 backdrop-blur-2xl border-t border-rose-100/50 dark:border-stone-800 shadow-[0_-15px_40px_rgba(255,181,197,0.15)]">
+<div class="flex justify-around items-center w-full max-w-md mx-auto px-4 pb-8 pt-4">
+<!-- Map (Active) -->
+<a class="flex flex-col items-center justify-center bg-rose-50 dark:bg-rose-900/20 text-rose-500 dark:text-rose-200 rounded-[24px] px-6 py-2 scale-105 transition-all duration-300" href="#">
+<span class="material-symbols-outlined" data-icon="map" style="font-variation-settings: 'FILL' 1;">map</span>
+<span class="font-['Plus_Jakarta_Sans'] text-[11px] font-bold uppercase tracking-widest mt-1">Map</span>
+</a>
+<!-- Chat -->
+<a class="flex flex-col items-center justify-center text-stone-400 dark:text-stone-600 px-6 py-2 scale-100 transition-all duration-300 hover:text-rose-300" href="#">
+<span class="material-symbols-outlined" data-icon="chat_bubble">chat_bubble</span>
+<span class="font-['Plus_Jakarta_Sans'] text-[11px] font-bold uppercase tracking-widest mt-1">Chat</span>
+</a>
+<!-- Calendar -->
+<a class="flex flex-col items-center justify-center text-stone-400 dark:text-stone-600 px-6 py-2 scale-100 transition-all duration-300 hover:text-rose-300" href="#">
+<span class="material-symbols-outlined" data-icon="calendar_today">calendar_today</span>
+<span class="font-['Plus_Jakarta_Sans'] text-[11px] font-bold uppercase tracking-widest mt-1">Calendar</span>
+</a>
+<!-- Profile -->
+<a class="flex flex-col items-center justify-center text-stone-400 dark:text-stone-600 px-6 py-2 scale-100 transition-all duration-300 hover:text-rose-300" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-['Plus_Jakarta_Sans'] text-[11px] font-bold uppercase tracking-widest mt-1">Profile</span>
+</a>
+</div>
+</nav>
+<style>
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</body></html>

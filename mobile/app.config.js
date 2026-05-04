@@ -7,15 +7,18 @@ module.exports = {
     orientation: "portrait",
     scheme: "coupleloc",
     userInterfaceStyle: "light",
+    newArchEnabled: false,
     android: {
       package: "com.coupleloc.app",
+      usesCleartextTraffic: true,
       permissions: [
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION",
         "ACCESS_BACKGROUND_LOCATION",
         "FOREGROUND_SERVICE",
         "FOREGROUND_SERVICE_LOCATION",
-        "POST_NOTIFICATIONS"
+        "POST_NOTIFICATIONS",
+        "RECEIVE_BOOT_COMPLETED"
       ]
     },
     plugins: [

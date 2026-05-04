@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,19 +19,63 @@ from app.services.pairing import get_partner_id
 router = APIRouter(prefix="/locations", tags=["locations"])
 
 
+def apply_expired_sharing(settings: SharingSettings) -> None:
+    expires_at = settings.expires_at
+    if expires_at is not None and expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+
+    if (
+        settings.enabled
+        and settings.mode == "one_hour"
+        and expires_at is not None
+        and expires_at <= datetime.now(timezone.utc)
+    ):
+        settings.enabled = False
+        settings.mode = "paused"
+        settings.expires_at = None
+
+
+def is_sharing_active(settings: SharingSettings) -> bool:
+    apply_expired_sharing(settings)
+    return settings.enabled and settings.mode != "paused"
+
+
 async def get_or_create_sharing_settings(session: AsyncSession, user_id) -> SharingSettings:
     settings = await session.get(SharingSettings, user_id)
     if settings is None:
-        settings = SharingSettings(user_id=user_id, enabled=True)
+        settings = SharingSettings(user_id=user_id, enabled=True, mode="always")
         session.add(settings)
         await session.flush()
+    apply_expired_sharing(settings)
     return settings
 
 
-def location_to_event(location: LatestLocation) -> dict:
+def location_to_out(
+    location: LatestLocation,
+    settings: SharingSettings | None = None,
+    *,
+    viewer_is_owner: bool = False,
+) -> LocationOut:
+    output = LocationOut.model_validate(location)
+    if settings is None or viewer_is_owner:
+        return output
+
+    if not settings.share_battery:
+        output.battery_level = None
+        output.is_charging = None
+
+    if not settings.precise_location:
+        output.latitude = round(output.latitude, 3)
+        output.longitude = round(output.longitude, 3)
+        output.accuracy = max(output.accuracy or 0, 500)
+
+    return output
+
+
+def location_to_event(location: LatestLocation, settings: SharingSettings) -> dict:
     return {
         "type": "location.updated",
-        "location": LocationOut.model_validate(location).model_dump(mode="json"),
+        "location": location_to_out(location, settings).model_dump(mode="json"),
     }
 
 
@@ -63,7 +107,7 @@ async def get_location_state(
     partner_id = await get_partner_id(session, current_user.id)
     if partner_id is not None:
         partner_settings = await get_or_create_sharing_settings(session, partner_id)
-        if partner_settings.enabled:
+        if is_sharing_active(partner_settings):
             partner_latest = await session.get(LatestLocation, partner_id)
 
     await session.commit()
@@ -78,9 +122,15 @@ async def get_location_state(
             if partner_settings is not None
             else None
         ),
-        my_latest=LocationOut.model_validate(my_latest) if my_latest is not None else None,
+        my_latest=(
+            location_to_out(my_latest, my_settings, viewer_is_owner=True)
+            if my_latest is not None
+            else None
+        ),
         partner_latest=(
-            LocationOut.model_validate(partner_latest) if partner_latest is not None else None
+            location_to_out(partner_latest, partner_settings)
+            if partner_latest is not None and partner_settings is not None
+            else None
         ),
     )
 
@@ -103,7 +153,37 @@ async def update_sharing_settings(
     session: AsyncSession = Depends(get_db_session),
 ):
     settings = await get_or_create_sharing_settings(session, current_user.id)
-    settings.enabled = payload.enabled
+
+    if payload.mode is not None:
+        settings.mode = payload.mode
+        if payload.mode == "paused":
+            settings.enabled = False
+            settings.expires_at = None
+        elif payload.mode == "one_hour":
+            settings.enabled = True
+            settings.expires_at = payload.expires_at or datetime.now(timezone.utc) + timedelta(hours=1)
+        else:
+            settings.enabled = True
+            settings.expires_at = None
+
+    if payload.enabled is not None:
+        settings.enabled = payload.enabled
+        if not payload.enabled:
+            settings.mode = "paused"
+            settings.expires_at = None
+        elif settings.mode == "paused":
+            settings.mode = "always"
+
+    if payload.expires_at is not None:
+        settings.expires_at = payload.expires_at
+    if payload.share_battery is not None:
+        settings.share_battery = payload.share_battery
+    if payload.share_distance is not None:
+        settings.share_distance = payload.share_distance
+    if payload.precise_location is not None:
+        settings.precise_location = payload.precise_location
+
+    apply_expired_sharing(settings)
     await session.commit()
     await session.refresh(settings)
 
@@ -124,10 +204,15 @@ async def update_my_location(
     session: AsyncSession = Depends(get_db_session),
 ):
     settings = await get_or_create_sharing_settings(session, current_user.id)
-    if not settings.enabled:
+    if not is_sharing_active(settings):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Location sharing is disabled",
+        )
+    if settings.mode == "foreground" and payload.source == "background":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Background sharing is disabled",
         )
 
     recorded_at = payload.recorded_at or datetime.now(timezone.utc)
@@ -153,7 +238,7 @@ async def update_my_location(
 
     partner_id = await get_partner_id(session, current_user.id)
     if partner_id is not None:
-        await connection_manager.send_to_user(partner_id, location_to_event(location))
+        await connection_manager.send_to_user(partner_id, location_to_event(location, settings))
         threshold = get_settings().low_battery_threshold
         if (
             location.battery_level is not None
@@ -186,7 +271,7 @@ async def get_partner_latest_location(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No active partner")
 
     partner_settings = await get_or_create_sharing_settings(session, partner_id)
-    if not partner_settings.enabled:
+    if not is_sharing_active(partner_settings):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Partner sharing is disabled",
@@ -198,4 +283,4 @@ async def get_partner_latest_location(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Partner has no location yet",
         )
-    return location
+    return location_to_out(location, partner_settings)

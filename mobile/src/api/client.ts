@@ -21,6 +21,28 @@ type RequestOptions = RequestInit & {
   auth?: boolean;
 };
 
+type ApiErrorBody = {
+  detail?: string | Array<{ loc?: Array<string | number>; msg?: string; type?: string }>;
+};
+
+function formatApiError(body: ApiErrorBody) {
+  if (typeof body.detail === "string") {
+    return body.detail;
+  }
+
+  if (Array.isArray(body.detail)) {
+    return body.detail
+      .map((item) => {
+        const field = item.loc?.filter((part) => part !== "body").join(".");
+        return field ? `${field}: ${item.msg}` : item.msg;
+      })
+      .filter(Boolean)
+      .join("\n");
+  }
+
+  return null;
+}
+
 export async function getAccessToken() {
   return SecureStore.getItemAsync(ACCESS_TOKEN_KEY);
 }
@@ -52,9 +74,10 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   if (!response.ok) {
     let message = `${response.status} ${response.statusText}`;
     try {
-      const body = (await response.json()) as { detail?: string };
-      if (body.detail) {
-        message = body.detail;
+      const body = (await response.json()) as ApiErrorBody;
+      const apiMessage = formatApiError(body);
+      if (apiMessage) {
+        message = apiMessage;
       }
     } catch {
       // Keep the HTTP status as the fallback message.
@@ -89,6 +112,72 @@ export async function login(username: string, password: string) {
   return auth;
 }
 
+export type SmsPurpose = "login" | "register" | "reset_password";
+
+export type SmsCodeResponse = {
+  phone_number: string;
+  purpose: SmsPurpose;
+  expires_at: string;
+  resend_after_seconds: number;
+  debug_code: string | null;
+};
+
+export function sendSmsCode(phoneNumber: string, purpose: SmsPurpose) {
+  return request<SmsCodeResponse>("/auth/sms/send", {
+    method: "POST",
+    auth: false,
+    body: JSON.stringify({ phone_number: phoneNumber, purpose })
+  });
+}
+
+export async function loginWithSms(phoneNumber: string, code: string) {
+  const auth = await request<AuthResponse>("/auth/sms/login", {
+    method: "POST",
+    auth: false,
+    body: JSON.stringify({ phone_number: phoneNumber, code })
+  });
+  await saveAccessToken(auth.access_token);
+  return auth;
+}
+
+export async function registerWithSms(
+  phoneNumber: string,
+  code: string,
+  displayName: string,
+  password: string
+) {
+  const auth = await request<AuthResponse>("/auth/sms/register", {
+    method: "POST",
+    auth: false,
+    body: JSON.stringify({
+      phone_number: phoneNumber,
+      code,
+      display_name: displayName,
+      password
+    })
+  });
+  await saveAccessToken(auth.access_token);
+  return auth;
+}
+
+export async function resetPasswordWithSms(
+  phoneNumber: string,
+  code: string,
+  newPassword: string
+) {
+  const auth = await request<AuthResponse>("/auth/password/reset", {
+    method: "POST",
+    auth: false,
+    body: JSON.stringify({
+      phone_number: phoneNumber,
+      code,
+      new_password: newPassword
+    })
+  });
+  await saveAccessToken(auth.access_token);
+  return auth;
+}
+
 export function fetchMe() {
   return request<User>("/auth/me");
 }
@@ -114,10 +203,24 @@ export function fetchSharingSettings() {
   return request<SharingSettings>("/locations/sharing");
 }
 
-export function updateSharingSettings(enabled: boolean) {
+export type SharingSettingsUpdate = Partial<{
+  enabled: boolean;
+  mode: SharingSettings["mode"];
+  expires_at: string | null;
+  share_battery: boolean;
+  share_distance: boolean;
+  precise_location: boolean;
+}>;
+
+export function updateSharingSettings(payload: boolean | SharingSettingsUpdate) {
+  const body =
+    typeof payload === "boolean"
+      ? { enabled: payload, mode: payload ? "always" : "paused" }
+      : payload;
+
   return request<SharingSettings>("/locations/sharing", {
     method: "PATCH",
-    body: JSON.stringify({ enabled })
+    body: JSON.stringify(body)
   });
 }
 

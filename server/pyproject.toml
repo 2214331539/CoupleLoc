@@ -7,7 +7,6 @@ dependencies = [
   "alembic>=1.13.0",
   "asyncpg>=0.29.0",
   "fastapi>=0.115.0",
-  "passlib[bcrypt]>=1.7.4",
   "psycopg[binary]>=3.2.0",
   "pydantic-settings>=2.6.0",
   "python-jose[cryptography]>=3.3.0",
@@ -28,5 +27,5 @@ target-version = "py311"
 select = ["E", "F", "I", "UP", "B"]
 
 [tool.setuptools.packages.find]
-include = ["app*"]  # 告诉它只打包 app 文件夹及其子包
-exclude = ["alembic*"] # 明确排除 alembic
+include = ["app*"]
+exclude = ["alembic*"]

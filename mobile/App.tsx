@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, SafeAreaView, StatusBar, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, StatusBar, StyleSheet, Text, View } from "react-native";
 
 import {
   clearAccessToken,
@@ -9,9 +9,10 @@ import {
   getAccessToken,
 } from "./src/api/client";
 import { AuthScreen } from "./src/screens/AuthScreen";
+import { SafeScreen } from "./src/components/SafeScreen";
 import { MainScreen } from "./src/screens/MainScreen";
-import { PairingScreen } from "./src/screens/PairingScreen";
 import { stopBackgroundLocation } from "./src/services/location";
+import { colors, spacing } from "./src/theme";
 import type { PairingStatus, SharingSettings, User } from "./src/types";
 
 type Session = {
@@ -71,10 +72,10 @@ export default function App() {
 
   if (booting) {
     return (
-      <SafeAreaView style={styles.centered}>
+      <SafeScreen style={styles.centered}>
         <ActivityIndicator />
         <Text style={styles.muted}>Connecting to CoupleLoc</Text>
-      </SafeAreaView>
+      </SafeScreen>
     );
   }
 
@@ -87,24 +88,11 @@ export default function App() {
     );
   }
 
-  if (!pairing?.paired) {
+  if (!pairing || !sharing) {
     return (
-      <>
-        <StatusBar barStyle="dark-content" />
-        <PairingScreen
-          user={session.user}
-          onLogout={handleLogout}
-          onPairingChanged={setPairing}
-        />
-      </>
-    );
-  }
-
-  if (!sharing) {
-    return (
-      <SafeAreaView style={styles.centered}>
+      <SafeScreen style={styles.centered}>
         <ActivityIndicator />
-      </SafeAreaView>
+      </SafeScreen>
     );
   }
 
@@ -117,6 +105,7 @@ export default function App() {
         token={session.token}
         user={session.user}
         onLogout={handleLogout}
+        onPairingChanged={setPairing}
         onSharingChanged={setSharing}
       />
     </View>
@@ -126,16 +115,16 @@ export default function App() {
 const styles = StyleSheet.create({
   app: {
     flex: 1,
-    backgroundColor: "#f7f7f2"
+    backgroundColor: colors.background
   },
   centered: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    gap: 12,
-    backgroundColor: "#f7f7f2"
+    gap: spacing.md,
+    backgroundColor: colors.background
   },
   muted: {
-    color: "#62645d"
+    color: colors.muted
   }
 });

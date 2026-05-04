@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -7,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field
 class UserPublic(BaseModel):
     id: UUID
     username: str
+    phone_number: str | None = None
     display_name: str
 
     model_config = ConfigDict(from_attributes=True)
@@ -19,6 +21,33 @@ class AuthRequest(BaseModel):
 
 class RegisterRequest(AuthRequest):
     display_name: str = Field(min_length=1, max_length=64)
+
+
+class SmsCodeSendRequest(BaseModel):
+    phone_number: str = Field(min_length=5, max_length=32)
+    purpose: Literal["login", "register", "reset_password"]
+
+
+class SmsCodeSendResponse(BaseModel):
+    phone_number: str
+    purpose: str
+    expires_at: datetime
+    resend_after_seconds: int
+    debug_code: str | None = None
+
+
+class SmsLoginRequest(BaseModel):
+    phone_number: str = Field(min_length=5, max_length=32)
+    code: str = Field(min_length=4, max_length=8)
+
+
+class SmsRegisterRequest(SmsLoginRequest):
+    display_name: str = Field(min_length=1, max_length=64)
+    password: str = Field(min_length=8, max_length=128)
+
+
+class PasswordResetRequest(SmsLoginRequest):
+    new_password: str = Field(min_length=8, max_length=128)
 
 
 class TokenResponse(BaseModel):
@@ -48,11 +77,21 @@ class PairingStatusOut(BaseModel):
 
 
 class SharingSettingsIn(BaseModel):
-    enabled: bool
+    enabled: bool | None = None
+    mode: Literal["always", "one_hour", "foreground", "paused"] | None = None
+    expires_at: datetime | None = None
+    share_battery: bool | None = None
+    share_distance: bool | None = None
+    precise_location: bool | None = None
 
 
 class SharingSettingsOut(BaseModel):
     enabled: bool
+    mode: str
+    expires_at: datetime | None
+    share_battery: bool
+    share_distance: bool
+    precise_location: bool
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
