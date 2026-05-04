@@ -8,6 +8,7 @@ import {
   fetchLocationState,
   listMemoryPoints,
 } from "../api/client";
+import { AppHeader, Card, EmptyState, IconBubble, PillButton, ScreenTitle } from "../components/HeartlineUI";
 import { SafeScreen } from "../components/SafeScreen";
 import { colors, radius, spacing } from "../theme";
 import type { LocationSnapshot, MemoryPoint, RealtimeEvent } from "../types";
@@ -21,16 +22,16 @@ export function MemoriesScreen({ token }: Props) {
   const [myLocation, setMyLocation] = useState<LocationSnapshot | null>(null);
   const [title, setTitle] = useState("");
   const [note, setNote] = useState("");
-  const [status, setStatus] = useState("Loading memories");
+  const [status, setStatus] = useState("正在加载记忆点");
 
   const reload = async () => {
     try {
       const [items, state] = await Promise.all([listMemoryPoints(), fetchLocationState()]);
       setPoints(items);
       setMyLocation(state.my_latest);
-      setStatus("Ready");
+      setStatus("已同步");
     } catch (err) {
-      setStatus(err instanceof Error ? err.message : "Failed to load memories");
+      setStatus(err instanceof Error ? err.message : "记忆点加载失败");
     }
   };
 
@@ -47,10 +48,10 @@ export function MemoriesScreen({ token }: Props) {
           reload();
         }
         if (payload.type === "battery.low") {
-          setStatus("Partner battery is low");
+          setStatus("对方电量偏低");
         }
       } catch {
-        setStatus("Received an invalid realtime message");
+        setStatus("收到无法识别的实时消息");
       }
     };
 
@@ -68,11 +69,11 @@ export function MemoriesScreen({ token }: Props) {
 
   const addCurrentPlace = async () => {
     if (!title.trim()) {
-      setStatus("Title is required");
+      setStatus("请输入标题");
       return;
     }
     if (!myLocation) {
-      setStatus("No current location yet");
+      setStatus("还没有可保存的当前位置");
       return;
     }
     try {
@@ -85,9 +86,9 @@ export function MemoriesScreen({ token }: Props) {
       setPoints((items) => [created, ...items]);
       setTitle("");
       setNote("");
-      setStatus("Memory saved");
+      setStatus("记忆点已保存");
     } catch (err) {
-      setStatus(err instanceof Error ? err.message : "Failed to save memory");
+      setStatus(err instanceof Error ? err.message : "保存失败");
     }
   };
 
@@ -95,56 +96,57 @@ export function MemoriesScreen({ token }: Props) {
     try {
       await deleteMemoryPoint(pointId);
       setPoints((items) => items.filter((item) => item.id !== pointId));
-      setStatus("Memory deleted");
+      setStatus("记忆点已删除");
     } catch (err) {
-      setStatus(err instanceof Error ? err.message : "Failed to delete memory");
+      setStatus(err instanceof Error ? err.message : "删除失败");
     }
   };
 
   return (
     <SafeScreen style={styles.screen}>
+      <AppHeader title="记忆点" subtitle={status} />
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Map Memories</Text>
-          <Text style={styles.subtitle}>Save the current place as a shared memory point</Text>
-        </View>
+        <ScreenTitle title="地图记忆" subtitle="把当前位置保存为你们共同的地图标记。" />
 
-        <View style={styles.form}>
+        <Card style={styles.form}>
           <TextInput
             onChangeText={setTitle}
-            placeholder="Memory title"
+            placeholder="记忆标题"
+            placeholderTextColor={colors.tertiaryText}
             style={styles.input}
             value={title}
           />
           <TextInput
             multiline
             onChangeText={setNote}
-            placeholder="Note"
+            placeholder="备注"
+            placeholderTextColor={colors.tertiaryText}
             style={[styles.input, styles.notesInput]}
             value={note}
           />
-          <Pressable onPress={addCurrentPlace} style={styles.primaryButton}>
-            <Text style={styles.primaryButtonText}>Save current place</Text>
-          </Pressable>
-        </View>
-
-        <Text style={styles.status}>{status}</Text>
+          <PillButton label="保存当前位置" onPress={addCurrentPlace} />
+        </Card>
 
         <View style={styles.list}>
-          {points.map((point) => (
-            <View key={point.id} style={styles.item}>
-              <View style={styles.itemText}>
-                <Text style={styles.itemTitle}>{point.title}</Text>
-                <Text style={styles.itemMeta}>
-                  {point.latitude.toFixed(5)}, {point.longitude.toFixed(5)}
-                </Text>
-                {point.note ? <Text style={styles.itemNotes}>{point.note}</Text> : null}
-              </View>
-              <Pressable onPress={() => removePoint(point.id)} style={styles.deleteButton}>
-                <Text style={styles.deleteButtonText}>Delete</Text>
-              </Pressable>
-            </View>
-          ))}
+          {points.length ? (
+            points.map((point) => (
+              <Card key={point.id} style={styles.item}>
+                <IconBubble icon="⌖" />
+                <View style={styles.itemText}>
+                  <Text style={styles.itemTitle}>{point.title}</Text>
+                  <Text style={styles.itemMeta}>
+                    {point.latitude.toFixed(5)}, {point.longitude.toFixed(5)}
+                  </Text>
+                  {point.note ? <Text style={styles.itemNotes}>{point.note}</Text> : null}
+                </View>
+                <Pressable onPress={() => removePoint(point.id)} style={styles.deleteButton}>
+                  <Text style={styles.deleteButtonText}>删除</Text>
+                </Pressable>
+              </Card>
+            ))
+          ) : (
+            <EmptyState title="暂无记忆点" body="保存当前位置后，它会显示在你们的地图上。" />
+          )}
         </View>
       </ScrollView>
     </SafeScreen>
@@ -157,87 +159,61 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background
   },
   content: {
-    padding: spacing.lg,
-    gap: spacing.md
-  },
-  header: {
-    gap: 4
-  },
-  title: {
-    color: colors.text,
-    fontSize: 24,
-    fontWeight: "900"
-  },
-  subtitle: {
-    color: colors.muted
+    padding: spacing.md,
+    gap: spacing.lg,
+    paddingBottom: spacing.xl
   },
   form: {
-    gap: spacing.sm
+    gap: spacing.md
   },
   input: {
-    minHeight: 52,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: "rgba(255,255,255,0.86)",
+    minHeight: 48,
+    borderRadius: radius.md,
+    backgroundColor: colors.fill,
     color: colors.text,
+    fontSize: 16,
     paddingHorizontal: spacing.md
   },
   notesInput: {
-    minHeight: 76,
-    paddingTop: 12
-  },
-  primaryButton: {
-    minHeight: 50,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: radius.full,
-    backgroundColor: colors.primary
-  },
-  primaryButtonText: {
-    color: colors.surface,
-    fontWeight: "800"
-  },
-  status: {
-    color: colors.muted
+    minHeight: 84,
+    paddingTop: spacing.md
   },
   list: {
-    gap: spacing.sm
+    gap: spacing.md
   },
   item: {
     flexDirection: "row",
-    gap: 12,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.86)",
-    backgroundColor: "rgba(255,255,255,0.76)",
-    padding: spacing.md
+    alignItems: "center",
+    gap: spacing.md
   },
   itemText: {
     flex: 1,
-    gap: 4
+    gap: 3
   },
   itemTitle: {
     color: colors.text,
     fontSize: 16,
-    fontWeight: "800"
+    fontWeight: "700"
   },
   itemMeta: {
-    color: colors.muted
+    color: colors.tertiaryText,
+    fontSize: 12
   },
   itemNotes: {
-    color: colors.text
+    color: colors.muted,
+    fontSize: 14,
+    lineHeight: 19
   },
   deleteButton: {
-    alignSelf: "center",
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.danger,
-    paddingHorizontal: 10,
-    paddingVertical: 8
+    minHeight: 34,
+    justifyContent: "center",
+    borderRadius: radius.full,
+    backgroundColor: colors.dangerSoft,
+    paddingHorizontal: spacing.sm
   },
   deleteButtonText: {
     color: colors.danger,
-    fontWeight: "800"
+    fontSize: 12,
+    fontWeight: "700"
   }
 });

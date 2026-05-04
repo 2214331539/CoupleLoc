@@ -8,7 +8,17 @@ import {
   updateSharingSettings,
   type SharingSettingsUpdate,
 } from "../api/client";
-import { AppHeader, Card, IconBubble, PillButton } from "../components/HeartlineUI";
+import {
+  AppHeader,
+  Card,
+  IconBubble,
+  ListRow,
+  PillButton,
+  ScreenTitle,
+  Section,
+  SegmentedControl,
+  StatusPill,
+} from "../components/HeartlineUI";
 import { SafeScreen } from "../components/SafeScreen";
 import { colors, radius, spacing } from "../theme";
 import type { PairingInvite, PairingStatus, SharingSettings, User } from "../types";
@@ -26,13 +36,12 @@ type Props = {
 const modes: Array<{
   key: SharingSettings["mode"];
   label: string;
-  icon: string;
-  description: string;
+  subtitle: string;
 }> = [
-  { key: "always", label: "始终共享", icon: "∞", description: "前台和后台持续同步" },
-  { key: "one_hour", label: "1 小时", icon: "1h", description: "临时开启，自动暂停" },
-  { key: "foreground", label: "仅前台", icon: "FG", description: "打开 App 时同步" },
-  { key: "paused", label: "暂停", icon: "II", description: "停止上传位置" }
+  { key: "always", label: "持续", subtitle: "前台和后台持续同步" },
+  { key: "one_hour", label: "1 小时", subtitle: "临时共享，一小时后暂停" },
+  { key: "foreground", label: "前台", subtitle: "打开 App 时同步" },
+  { key: "paused", label: "暂停", subtitle: "停止上传位置" },
 ];
 
 export function ProfileScreen({
@@ -43,14 +52,14 @@ export function ProfileScreen({
   onSharingChanged,
   onLogout,
 }: Props) {
-  const [status, setStatus] = useState("实时同步中");
+  const [status, setStatus] = useState("设置已同步");
   const [busy, setBusy] = useState(false);
   const [invite, setInvite] = useState<PairingInvite | null>(null);
   const [pairCode, setPairCode] = useState("");
 
   const activeLabel = useMemo(() => {
     const match = modes.find((mode) => mode.key === sharing.mode);
-    return sharing.enabled ? match?.label ?? "始终共享" : "暂停";
+    return sharing.enabled ? match?.label ?? "持续" : "暂停";
   }, [sharing.enabled, sharing.mode]);
 
   const updateSharing = async (payload: SharingSettingsUpdate) => {
@@ -71,7 +80,7 @@ export function ProfileScreen({
     try {
       const next = await createPairingInvite();
       setInvite(next);
-      setStatus("心动码已生成，等待另一半加入");
+      setStatus("心动码已生成，等待对方加入");
     } catch (err) {
       setStatus(err instanceof Error ? err.message : "心动码生成失败");
     } finally {
@@ -81,7 +90,7 @@ export function ProfileScreen({
 
   const acceptInvite = async () => {
     if (!pairCode.trim()) {
-      setStatus("请输入另一半的心动码");
+      setStatus("请输入对方的心动码");
       return;
     }
     setBusy(true);
@@ -106,9 +115,9 @@ export function ProfileScreen({
       await sendChatMessage({
         message_type: "quick_status",
         status_key: "sos",
-        body: "SOS：我需要帮助，请查看我的位置并联系我"
+        body: "SOS：我需要帮助，请查看我的位置并联系我。"
       });
-      setStatus("SOS 已发送给另一半");
+      setStatus("SOS 已发送给对方");
     } catch (err) {
       setStatus(err instanceof Error ? err.message : "SOS 发送失败");
     } finally {
@@ -119,17 +128,22 @@ export function ProfileScreen({
   return (
     <SafeScreen style={styles.screen}>
       <AppHeader
-        left={<IconBubble icon={user.display_name.slice(0, 1).toUpperCase()} size={48} />}
-        subtitle={
-          pairing.partner ? `和 ${pairing.partner.display_name} 的亲密空间` : "在这里添加另一半"
-        }
+        left={<IconBubble icon={user.display_name.slice(0, 1).toUpperCase()} size={38} />}
+        subtitle={status}
+        title="我的"
       />
 
       <ScrollView contentContainerStyle={styles.content}>
-        <View>
-          <Text style={styles.title}>隐私与共享</Text>
-          <Text style={styles.subtitle}>守护你与伴侣的亲密空间</Text>
-        </View>
+        <ScreenTitle
+          action={
+            <StatusPill
+              label={pairing.paired ? "已配对" : "未配对"}
+              tone={pairing.paired ? "mint" : "warning"}
+            />
+          }
+          subtitle={`${user.display_name} · ${user.phone_number ?? user.username}`}
+          title="账户与共享"
+        />
 
         {!pairing.paired ? (
           <PairingCard
@@ -142,121 +156,93 @@ export function ProfileScreen({
           />
         ) : (
           <Card style={styles.partnerCard}>
-            <IconBubble icon={pairing.partner?.display_name.slice(0, 1) ?? "♡"} />
+            <IconBubble icon={pairing.partner?.display_name.slice(0, 1) ?? "♥"} tone="rose" />
             <View style={styles.flex}>
               <Text style={styles.partnerTitle}>{pairing.partner?.display_name}</Text>
-              <Text style={styles.cardSubtitle}>你们已经完成配对</Text>
+              <Text style={styles.partnerSubtitle}>你们已经完成配对</Text>
             </View>
-            <Text style={styles.heart}>♡</Text>
           </Card>
         )}
 
-        <View style={styles.statusRow}>
-          <Text style={styles.sectionLabel}>共享状态</Text>
-          <View style={styles.onlinePill}>
-            <View style={styles.onlineDot} />
-            <Text style={styles.onlineText}>{activeLabel}</Text>
-          </View>
-        </View>
-
-        <View style={styles.modeGrid}>
-          {modes.map((mode) => {
-            const active =
-              (sharing.enabled && sharing.mode === mode.key) ||
-              (!sharing.enabled && mode.key === "paused");
-            return (
-              <Pressable
-                disabled={busy}
-                key={mode.key}
-                onPress={() => updateSharing({ mode: mode.key })}
-                style={[styles.modeCard, active && styles.modeCardActive]}
-              >
-                <Text style={styles.modeIcon}>{mode.icon}</Text>
-                <Text style={styles.modeLabel}>{mode.label}</Text>
-                <Text style={styles.modeDesc}>{mode.description}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
-
-        <Card style={styles.privacyCard}>
-          <View style={styles.cardTitleRow}>
-            <IconBubble icon="⌖" tone="secondary" />
-            <View style={styles.flex}>
-              <Text style={styles.cardTitle}>位置精准度</Text>
-              <Text style={styles.cardSubtitle}>模糊处理敏感区域</Text>
-            </View>
-            <View style={styles.segment}>
-              <Pressable
-                onPress={() => updateSharing({ precise_location: true })}
-                style={[styles.segmentButton, sharing.precise_location && styles.segmentActive]}
-              >
-                <Text style={styles.segmentText}>精准</Text>
-              </Pressable>
-              <Pressable
-                onPress={() => updateSharing({ precise_location: false })}
-                style={[styles.segmentButton, !sharing.precise_location && styles.segmentActive]}
-              >
-                <Text style={styles.segmentText}>模糊</Text>
-              </Pressable>
-            </View>
-          </View>
-
-          <View style={styles.mapPreview}>
-            <View style={styles.mapLineOne} />
-            <View style={styles.mapLineTwo} />
-            <View style={styles.blurCircle}>
-              <IconBubble icon="⌂" size={56} />
-            </View>
-            <Text style={styles.mapCaption}>
-              {sharing.precise_location ? "精准位置共享已开启" : "模糊位置共享已开启"}
+        <Section title="位置共享">
+          <ListRow
+            left={<IconBubble icon="⌖" />}
+            right={<StatusPill label={activeLabel} tone={sharing.enabled ? "mint" : "plain"} />}
+            subtitle="控制什么时候上传你的位置"
+            title="共享模式"
+          />
+          <View style={styles.modeControl}>
+            <SegmentedControl
+              value={sharing.enabled ? sharing.mode : "paused"}
+              options={modes.map((mode) => ({ value: mode.key, label: mode.label }))}
+              onChange={(value) => updateSharing({ mode: value })}
+            />
+            <Text style={styles.modeDescription}>
+              {modes.find((mode) => mode.key === (sharing.enabled ? sharing.mode : "paused"))?.subtitle}
             </Text>
           </View>
-        </Card>
+        </Section>
 
-        <Text style={styles.sectionLabel}>共享偏好</Text>
-        <Card style={styles.preferenceCard}>
+        <Section title="隐私">
+          <ListRow
+            left={<IconBubble icon="≈" tone="secondary" />}
+            right={
+              <View style={styles.precisionControl}>
+                <SegmentedControl
+                  value={sharing.precise_location ? "precise" : "blur"}
+                  options={[
+                    { value: "precise", label: "精确" },
+                    { value: "blur", label: "模糊" },
+                  ]}
+                  onChange={(value) => updateSharing({ precise_location: value === "precise" })}
+                />
+              </View>
+            }
+            subtitle="模糊模式会降低对方看到的位置精度"
+            title="位置精度"
+          />
           <PreferenceRow
-            icon="⌕"
-            label="共享距离差"
+            icon="km"
+            label="显示距离"
             value={sharing.share_distance}
             onValueChange={(value) => updateSharing({ share_distance: value })}
           />
-          <View style={styles.divider} />
           <PreferenceRow
-            icon="↯"
-            label="共享电量状态"
+            icon="%"
+            label="共享电量"
             value={sharing.share_battery}
             onValueChange={(value) => updateSharing({ share_battery: value })}
           />
-          <View style={styles.divider} />
-          <View style={styles.preferenceRow}>
-            <IconBubble icon="!" tone="danger" />
-            <Text style={styles.preferenceText}>隐身模式计划</Text>
-            <Text style={styles.chevron}>›</Text>
-          </View>
-        </Card>
+        </Section>
 
-        <Card style={styles.safetyCard}>
-          <View style={styles.cardTitleRow}>
-            <View style={styles.flex}>
-              <Text style={styles.safetyTitle}>紧急安全</Text>
-              <Text style={styles.cardSubtitle}>长按或点击发送 SOS 快捷状态</Text>
-            </View>
-            <Text style={styles.manageText}>管理联系人</Text>
-          </View>
-          <Pressable disabled={busy} onLongPress={sendSos} onPress={sendSos} style={styles.sosButton}>
-            <Text style={styles.sosText}>SOS</Text>
-          </Pressable>
-          <Text style={styles.status}>{status}</Text>
-        </Card>
+        <Section title="安全">
+          <ListRow
+            left={<IconBubble icon="!" tone="danger" />}
+            right={
+              <Pressable disabled={busy} onPress={sendSos} style={styles.sosButton}>
+                <Text style={styles.sosText}>发送</Text>
+              </Pressable>
+            }
+            subtitle="向对方发送紧急状态消息"
+            title="SOS"
+          />
+          <ListRow
+            destructive
+            left={<IconBubble icon="⏸" tone="plain" />}
+            onPress={() => updateSharing({ enabled: false, mode: "paused" })}
+            subtitle="立即停止前台和后台位置上传"
+            title="停止所有共享"
+          />
+        </Section>
 
-        <PillButton
-          label="停止所有共享"
-          onPress={() => updateSharing({ enabled: false, mode: "paused" })}
-          tone="danger"
-        />
-        <PillButton label="退出登录" onPress={onLogout} tone="ghost" />
+        <Section title="账户">
+          <ListRow
+            destructive
+            left={<IconBubble icon="↩" tone="plain" />}
+            onPress={onLogout}
+            title="退出登录"
+          />
+        </Section>
       </ScrollView>
     </SafeScreen>
   );
@@ -279,29 +265,31 @@ function PairingCard({
 }) {
   return (
     <Card style={styles.pairingCard}>
-      <View style={styles.cardTitleRow}>
-        <IconBubble icon="♡" />
+      <View style={styles.pairHeader}>
+        <IconBubble icon="♥" tone="rose" />
         <View style={styles.flex}>
-          <Text style={styles.cardTitle}>添加另一半</Text>
-          <Text style={styles.cardSubtitle}>生成心动码或输入对方的心动码</Text>
+          <Text style={styles.pairTitle}>添加另一半</Text>
+          <Text style={styles.pairSubtitle}>生成心动码，或输入对方发来的心动码。</Text>
         </View>
       </View>
+
       <View style={styles.codeBox}>
-        <Text style={styles.codeLabel}>专属心动码</Text>
-        <Text style={styles.codeText}>{invite?.code ?? "尚未生成"}</Text>
+        <Text style={styles.codeLabel}>我的心动码</Text>
+        <Text selectable style={styles.codeText}>
+          {invite?.code ?? "尚未生成"}
+        </Text>
       </View>
-      <View style={styles.pairActions}>
-        <PillButton disabled={busy} label="生成心动码" onPress={onCreate} style={styles.pairButton} />
-        <TextInput
-          autoCapitalize="characters"
-          onChangeText={onChangeCode}
-          placeholder="输入对方心动码"
-          placeholderTextColor={colors.outline}
-          style={styles.codeInput}
-          value={code}
-        />
-        <PillButton disabled={busy} label="立即配对" onPress={onAccept} style={styles.pairButton} tone="ghost" />
-      </View>
+
+      <PillButton disabled={busy} label="生成心动码" onPress={onCreate} />
+      <TextInput
+        autoCapitalize="characters"
+        onChangeText={onChangeCode}
+        placeholder="输入对方心动码"
+        placeholderTextColor={colors.tertiaryText}
+        style={styles.codeInput}
+        value={code}
+      />
+      <PillButton disabled={busy} label="立即配对" onPress={onAccept} tone="ghost" />
     </Card>
   );
 }
@@ -318,16 +306,18 @@ function PreferenceRow({
   onValueChange: (value: boolean) => void;
 }) {
   return (
-    <View style={styles.preferenceRow}>
-      <IconBubble icon={icon} tone="mint" />
-      <Text style={styles.preferenceText}>{label}</Text>
-      <Switch
-        onValueChange={onValueChange}
-        thumbColor={colors.surface}
-        trackColor={{ false: colors.surfaceContainerHigh, true: colors.primary }}
-        value={value}
-      />
-    </View>
+    <ListRow
+      left={<IconBubble icon={icon} tone="plain" />}
+      right={
+        <Switch
+          onValueChange={onValueChange}
+          thumbColor={colors.surface}
+          trackColor={{ false: colors.fillStrong, true: colors.tertiary }}
+          value={value}
+        />
+      }
+      title={label}
+    />
   );
 }
 
@@ -337,21 +327,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background
   },
   content: {
-    padding: spacing.lg,
+    padding: spacing.md,
     gap: spacing.lg,
     paddingBottom: spacing.xl
   },
-  title: {
-    color: colors.text,
-    fontSize: 28,
-    fontWeight: "900"
-  },
-  subtitle: {
-    color: colors.muted,
-    fontSize: 16
-  },
-  pairingCard: {
-    gap: spacing.md
+  flex: {
+    flex: 1
   },
   partnerCard: {
     flexDirection: "row",
@@ -360,253 +341,86 @@ const styles = StyleSheet.create({
   },
   partnerTitle: {
     color: colors.text,
-    fontSize: 20,
-    fontWeight: "900"
+    fontSize: 17,
+    fontWeight: "700"
   },
-  heart: {
-    color: colors.primary,
-    fontSize: 26,
-    fontWeight: "900"
+  partnerSubtitle: {
+    color: colors.muted,
+    fontSize: 14,
+    marginTop: 2
+  },
+  modeControl: {
+    gap: spacing.sm,
+    padding: spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.line
+  },
+  modeDescription: {
+    color: colors.muted,
+    fontSize: 13,
+    lineHeight: 18
+  },
+  precisionControl: {
+    width: 132
+  },
+  sosButton: {
+    minHeight: 34,
+    justifyContent: "center",
+    borderRadius: radius.full,
+    backgroundColor: colors.danger,
+    paddingHorizontal: spacing.md
+  },
+  sosText: {
+    color: colors.surface,
+    fontSize: 13,
+    fontWeight: "700"
+  },
+  pairingCard: {
+    gap: spacing.md
+  },
+  pairHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md
+  },
+  pairTitle: {
+    color: colors.text,
+    fontSize: 18,
+    fontWeight: "800"
+  },
+  pairSubtitle: {
+    color: colors.muted,
+    fontSize: 14,
+    lineHeight: 20,
+    marginTop: 2
   },
   codeBox: {
     alignItems: "center",
     borderRadius: radius.lg,
-    backgroundColor: colors.surfaceContainer,
+    backgroundColor: colors.fill,
     padding: spacing.lg
   },
   codeLabel: {
     color: colors.muted,
-    fontWeight: "800"
+    fontSize: 13,
+    fontWeight: "700"
   },
   codeText: {
-    color: colors.primaryStrong,
-    fontSize: 26,
-    fontWeight: "900",
-    letterSpacing: 0
-  },
-  pairActions: {
-    gap: spacing.md
-  },
-  pairButton: {
-    minHeight: 48
+    color: colors.text,
+    fontSize: 28,
+    fontWeight: "800",
+    marginTop: spacing.xs
   },
   codeInput: {
-    minHeight: 54,
-    borderRadius: radius.full,
-    backgroundColor: colors.surface,
+    height: 48,
+    borderRadius: radius.md,
+    backgroundColor: colors.fill,
     color: colors.text,
     fontSize: 17,
-    fontWeight: "800",
-    paddingHorizontal: spacing.lg
-  },
-  statusRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between"
-  },
-  sectionLabel: {
-    color: colors.secondary,
-    fontSize: 13,
-    fontWeight: "900"
-  },
-  onlinePill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-    borderRadius: radius.full,
-    backgroundColor: colors.tertiarySoft,
+    fontWeight: "600",
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm
-  },
-  onlineDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.tertiary
-  },
-  onlineText: {
-    color: colors.tertiary,
-    fontWeight: "900"
-  },
-  modeGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.md
-  },
-  modeCard: {
-    width: "47.7%",
-    minHeight: 124,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: spacing.sm,
-    borderRadius: radius.lg,
-    backgroundColor: "rgba(255,255,255,0.72)",
-    borderWidth: 1,
-    borderColor: colors.line,
-    padding: spacing.md
-  },
-  modeCardActive: {
-    backgroundColor: colors.surface,
-    borderColor: colors.primaryStrong
-  },
-  modeIcon: {
-    color: colors.primaryStrong,
-    fontSize: 24,
-    fontWeight: "900"
-  },
-  modeLabel: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: "900"
-  },
-  modeDesc: {
-    color: colors.muted,
-    fontSize: 12,
-    textAlign: "center"
-  },
-  privacyCard: {
-    gap: spacing.md
-  },
-  cardTitleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md
-  },
-  flex: {
-    flex: 1
-  },
-  cardTitle: {
-    color: colors.text,
-    fontSize: 18,
-    fontWeight: "900"
-  },
-  cardSubtitle: {
-    color: colors.muted,
-    marginTop: 2
-  },
-  segment: {
-    flexDirection: "row",
-    borderRadius: radius.full,
-    backgroundColor: colors.surfaceContainerHigh,
-    padding: 4
-  },
-  segmentButton: {
-    borderRadius: radius.full,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm
-  },
-  segmentActive: {
-    backgroundColor: colors.surface
-  },
-  segmentText: {
-    color: colors.primaryStrong,
-    fontWeight: "900"
-  },
-  mapPreview: {
-    height: 180,
-    overflow: "hidden",
-    borderRadius: radius.lg,
-    backgroundColor: colors.surfaceContainer
-  },
-  mapLineOne: {
-    position: "absolute",
-    left: -20,
-    top: 45,
-    width: 360,
-    height: 14,
-    transform: [{ rotate: "-35deg" }],
-    backgroundColor: "rgba(255,255,255,0.85)"
-  },
-  mapLineTwo: {
-    position: "absolute",
-    left: 120,
-    top: -20,
-    width: 18,
-    height: 260,
-    transform: [{ rotate: "42deg" }],
-    backgroundColor: "rgba(255,255,255,0.78)"
-  },
-  blurCircle: {
-    position: "absolute",
-    left: "34%",
-    top: "22%",
-    width: 128,
-    height: 128,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 64,
-    backgroundColor: "rgba(255,255,255,0.48)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.9)"
-  },
-  mapCaption: {
-    position: "absolute",
-    left: spacing.lg,
-    bottom: spacing.md,
-    color: colors.primary,
-    fontWeight: "900"
-  },
-  preferenceCard: {
-    padding: 0,
-    overflow: "hidden"
-  },
-  preferenceRow: {
-    minHeight: 78,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-    paddingHorizontal: spacing.lg
-  },
-  preferenceText: {
-    flex: 1,
-    color: colors.text,
-    fontSize: 17,
-    fontWeight: "900"
-  },
-  divider: {
-    height: 1,
-    backgroundColor: colors.surfaceContainer,
-    marginLeft: 78
-  },
-  chevron: {
-    color: colors.muted,
-    fontSize: 24
-  },
-  safetyCard: {
-    gap: spacing.lg,
-    borderColor: colors.line,
-    backgroundColor: "rgba(255,255,255,0.78)"
-  },
-  safetyTitle: {
-    color: colors.text,
-    fontSize: 24,
-    fontWeight: "900"
-  },
-  manageText: {
-    color: colors.primaryStrong,
-    fontWeight: "900"
-  },
-  sosButton: {
-    alignSelf: "center",
-    width: 112,
-    height: 112,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 56,
-    backgroundColor: colors.danger,
-    shadowColor: colors.shadow,
-    shadowOpacity: 0.1,
-    shadowRadius: 18,
-    elevation: 4
-  },
-  sosText: {
-    color: colors.surface,
-    fontSize: 24,
-    fontWeight: "900"
-  },
-  status: {
-    color: colors.muted,
-    textAlign: "center",
-    fontWeight: "700"
+    paddingVertical: 0,
+    includeFontPadding: false,
+    textAlignVertical: "center"
   }
 });

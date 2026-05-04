@@ -21,10 +21,10 @@ type Props = {
 };
 
 const tabs: Array<{ key: TabKey; label: string; icon: string }> = [
-  { key: "map", label: "Map", icon: "▱" },
-  { key: "chat", label: "Chat", icon: "□" },
-  { key: "calendar", label: "Calendar", icon: "▣" },
-  { key: "profile", label: "Profile", icon: "♙" }
+  { key: "map", label: "位置", icon: "⌖" },
+  { key: "chat", label: "聊天", icon: "✉" },
+  { key: "calendar", label: "日历", icon: "▦" },
+  { key: "profile", label: "我的", icon: "◎" },
 ];
 
 export function MainScreen(props: Props) {
@@ -47,7 +47,7 @@ export function MainScreen(props: Props) {
         ) : null}
         {activeTab === "calendar" ? (
           <View style={styles.tabPane}>
-            <CalendarScreen token={props.token} />
+            <CalendarScreen pairing={props.pairing} token={props.token} />
           </View>
         ) : null}
         {activeTab === "profile" ? (
@@ -72,7 +72,11 @@ export function MainScreen(props: Props) {
             <Pressable
               key={tab.key}
               onPress={() => setActiveTab(tab.key)}
-              style={[styles.tabButton, active && styles.tabButtonActive]}
+              style={({ pressed }) => [
+                styles.tabButton,
+                active && styles.tabButtonActive,
+                pressed && styles.tabButtonPressed,
+              ]}
             >
               <Text style={[styles.tabIcon, active && styles.tabTextActive]}>{tab.icon}</Text>
               <Text style={[styles.tabText, active && styles.tabTextActive]}>{tab.label}</Text>
@@ -102,20 +106,17 @@ const styles = StyleSheet.create({
   tabBar: {
     flexDirection: "row",
     alignItems: "center",
-    borderTopLeftRadius: radius.lg,
-    borderTopRightRadius: radius.lg,
-    borderWidth: 1,
-    borderBottomWidth: 0,
-    borderColor: "rgba(255,255,255,0.9)",
-    backgroundColor: "rgba(255,255,255,0.82)",
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.line,
+    backgroundColor: "rgba(248,248,248,0.94)",
     paddingHorizontal: spacing.md,
     paddingTop: spacing.sm,
     paddingBottom: spacing.md,
-    ...shadows.card
+    ...shadows.soft
   },
   tabButton: {
     flex: 1,
-    minHeight: 60,
+    minHeight: 56,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: radius.md,
@@ -124,18 +125,20 @@ const styles = StyleSheet.create({
   tabButtonActive: {
     backgroundColor: colors.surface
   },
+  tabButtonPressed: {
+    opacity: 0.72
+  },
   tabIcon: {
-    color: colors.muted,
-    fontSize: 26,
-    fontWeight: "900"
+    color: colors.tertiaryText,
+    fontSize: 20,
+    fontWeight: "700"
   },
   tabText: {
-    color: colors.muted,
-    fontSize: 10,
-    fontWeight: "900",
-    letterSpacing: 0
+    color: colors.tertiaryText,
+    fontSize: 11,
+    fontWeight: "600"
   },
   tabTextActive: {
-    color: colors.primaryStrong
+    color: colors.primary
   }
 });

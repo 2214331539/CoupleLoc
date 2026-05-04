@@ -10,7 +10,14 @@ import {
   sendChatMessage,
   updateSharingSettings,
 } from "../api/client";
-import { AppHeader, Card, IconBubble, PillButton } from "../components/HeartlineUI";
+import {
+  AppHeader,
+  Card,
+  IconBubble,
+  PillButton,
+  StatTile,
+  StatusPill,
+} from "../components/HeartlineUI";
 import { SafeScreen } from "../components/SafeScreen";
 import {
   getPermissionSnapshot,
@@ -47,9 +54,9 @@ type CameraPosition = {
 };
 
 const quickStatuses = [
-  { key: "on_the_way", label: "我在路上了" },
-  { key: "miss_you", label: "我想你了" },
-  { key: "arrived_safe", label: "平安到家" }
+  { key: "on_the_way", label: "在路上" },
+  { key: "miss_you", label: "想你了" },
+  { key: "arrived_safe", label: "平安到达" },
 ];
 
 function formatTime(value?: string) {
@@ -63,7 +70,7 @@ function formatBattery(value?: number | null, isCharging?: boolean | null) {
   if (value === null || value === undefined) {
     return "未共享";
   }
-  return `${Math.round(value * 100)}%${isCharging ? " 充电中" : ""}`;
+  return `${Math.round(value * 100)}%${isCharging ? " · 充电中" : ""}`;
 }
 
 function toMapPoint(location: LocationSnapshot | MemoryPoint): LatLng {
@@ -100,12 +107,21 @@ function distanceKm(a: LocationSnapshot | null, b: LocationSnapshot | null) {
   return earthRadiusKm * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
 }
 
+function formatDistance(value: number | null) {
+  if (value === null) {
+    return "已隐藏";
+  }
+  if (value < 1) {
+    return "< 1 km";
+  }
+  return `${Math.round(value)} km`;
+}
+
 export function TrackerScreen({
   user,
   token,
   pairing,
   sharing,
-  onLogout,
   onSharingChanged,
 }: Props) {
   const mapRef = useRef<any>(null);
@@ -153,6 +169,7 @@ export function TrackerScreen({
         setMyLocation(state.my_latest);
         setPartnerLocation(state.partner_latest);
         setMemoryPoints(points);
+        setStatus("位置状态已同步");
       } catch (err) {
         setStatus(err instanceof Error ? err.message : "位置状态加载失败");
       }
@@ -173,7 +190,7 @@ export function TrackerScreen({
         const payload = JSON.parse(event.data) as RealtimeEvent;
         if (payload.type === "location.updated") {
           setPartnerLocation(payload.location);
-          setStatus("另一半刚刚更新了位置");
+          setStatus("对方刚刚更新了位置");
           return;
         }
 
@@ -181,9 +198,9 @@ export function TrackerScreen({
           setPartnerSharing(payload.settings);
           if (!payload.settings.enabled) {
             setPartnerLocation(null);
-            setStatus("另一半暂停了位置共享");
+            setStatus("对方暂停了位置共享");
           } else {
-            setStatus("另一半恢复了位置共享");
+            setStatus("对方恢复了位置共享");
           }
         }
         if (payload.type === "memory.point_changed") {
@@ -192,7 +209,7 @@ export function TrackerScreen({
             .catch(() => setStatus("记忆点刷新失败"));
         }
         if (payload.type === "battery.low" && payload.location.user_id === partner?.id) {
-          setStatus("另一半电量偏低");
+          setStatus("对方电量偏低");
         }
       } catch {
         setStatus("收到了一条无法识别的实时消息");
@@ -243,7 +260,7 @@ export function TrackerScreen({
       subscription = await startForegroundLocation(
         (location) => {
           setMyLocation(location);
-          setStatus("位置已同步");
+          setStatus("我的位置已同步");
         },
         (message) => setStatus(message)
       );
@@ -270,6 +287,10 @@ export function TrackerScreen({
   };
 
   const sendQuickStatus = async (key: string, body: string) => {
+    if (!pairing.paired) {
+      setStatus("请先在「我的」页面完成配对");
+      return;
+    }
     try {
       await sendChatMessage({ message_type: "quick_status", status_key: key, body });
       setStatus(`已发送：${body}`);
@@ -297,6 +318,8 @@ export function TrackerScreen({
     }
   };
 
+  const socketLabel = socketState === "open" ? "实时在线" : socketState === "connecting" ? "连接中" : "离线";
+
   return (
     <View style={styles.screen}>
       {amapReady ? (
@@ -307,10 +330,7 @@ export function TrackerScreen({
           onLoad={() => mapRef.current?.moveCamera(cameraPosition, 100)}
         >
           {myLocation ? (
-            <Marker
-              onPress={() => setStatus("这是你的最新位置")}
-              position={toMapPoint(myLocation)}
-            />
+            <Marker onPress={() => setStatus("这是你的最新位置")} position={toMapPoint(myLocation)} />
           ) : null}
           {visiblePartnerLocation && partner ? (
             <Marker
@@ -334,53 +354,25 @@ export function TrackerScreen({
 
       <SafeScreen style={styles.overlay}>
         <AppHeader
-          left={<IconBubble icon={user.display_name.slice(0, 1).toUpperCase()} size={48} />}
-          right={<Text style={styles.heart}>♡</Text>}
+          left={<IconBubble icon={user.display_name.slice(0, 1).toUpperCase()} size={38} />}
+          right={<StatusPill label={socketLabel} tone={socketState === "open" ? "mint" : "plain"} />}
+          subtitle={status}
+          title="实时位置"
         />
 
         <Card style={styles.summaryCard}>
           <View style={styles.summaryTop}>
             <View>
-              <Text style={styles.metricLabel}>相距距离</Text>
-              <Text style={styles.distanceText}>
-                {distance === null ? "已隐藏" : `${distance < 1 ? "<1" : Math.round(distance)}km`}
-              </Text>
+              <Text style={styles.summaryLabel}>相距</Text>
+              <Text style={styles.distanceText}>{formatDistance(distance)}</Text>
             </View>
-            <View style={styles.weatherBlock}>
-              <Text style={styles.metricLabel}>实时状态</Text>
-              <Text style={styles.weatherText}>
-                {socketState === "open" ? "实时同步中" : "重连中"}
+            <View style={styles.summaryRight}>
+              <Text style={styles.partnerName}>{partner?.display_name ?? "未配对"}</Text>
+              <Text style={styles.summaryMeta}>
+                {visiblePartnerLocation ? `${formatTime(visiblePartnerLocation.received_at)} 更新` : "暂无位置"}
               </Text>
             </View>
           </View>
-          <View style={styles.summaryLine} />
-          <View style={styles.nextRow}>
-            <IconBubble icon="▣" size={40} />
-            <Text style={styles.nextText}>距离下次见面</Text>
-            <View style={styles.daysPill}>
-              <Text style={styles.daysText}>待计划</Text>
-            </View>
-          </View>
-        </Card>
-
-        <View style={styles.sideActions}>
-          <Pressable onPress={() => Linking.openSettings()} style={styles.roundAction}>
-            <Text style={styles.roundActionText}>♙</Text>
-          </Pressable>
-          <Pressable onPress={saveMemoryHere} style={styles.roundAction}>
-            <Text style={styles.roundActionText}>♡</Text>
-          </Pressable>
-          <Pressable
-            onPress={() =>
-              sendQuickStatus("sos", "SOS：我需要帮助，请查看我的位置并联系我")
-            }
-            style={[styles.roundAction, styles.sosAction]}
-          >
-            <Text style={styles.sosText}>SOS</Text>
-          </Pressable>
-        </View>
-
-        <View style={styles.bottomPanel}>
           <View style={styles.quickRow}>
             {quickStatuses.map((item, index) => (
               <PillButton
@@ -392,39 +384,63 @@ export function TrackerScreen({
               />
             ))}
           </View>
+        </Card>
 
+        <View style={styles.sideActions}>
+          <Pressable onPress={() => Linking.openSettings()} style={styles.roundAction}>
+            <Text style={styles.roundActionText}>⚙</Text>
+          </Pressable>
+          <Pressable onPress={saveMemoryHere} style={styles.roundAction}>
+            <Text style={styles.roundActionText}>＋</Text>
+          </Pressable>
+          <Pressable
+            onPress={() =>
+              sendQuickStatus("sos", "SOS：我需要帮助，请查看我的位置并联系我。")
+            }
+            style={[styles.roundAction, styles.sosAction]}
+          >
+            <Text style={styles.sosText}>SOS</Text>
+          </Pressable>
+        </View>
+
+        <View style={styles.bottomPanel}>
           <Card style={styles.infoPanel}>
-            <View style={styles.row}>
+            <View style={styles.sharingRow}>
               <View>
-                <Text style={styles.label}>我的共享</Text>
-                <Text style={styles.value}>{sharing.enabled ? "开启" : "暂停"}</Text>
+                <Text style={styles.panelTitle}>我的共享</Text>
+                <Text style={styles.panelSubtitle}>{sharing.enabled ? "正在共享位置" : "已暂停共享"}</Text>
               </View>
               <Switch
                 onValueChange={toggleSharing}
                 thumbColor={colors.surface}
-                trackColor={{ false: colors.surfaceContainerHigh, true: colors.primary }}
+                trackColor={{ false: colors.fillStrong, true: colors.tertiary }}
                 value={sharing.enabled}
               />
             </View>
 
-            <View style={styles.grid}>
-              <Metric label="我" value={formatTime(myLocation?.received_at)} />
-              <Metric label="另一半" value={formatTime(visiblePartnerLocation?.received_at)} />
-              <Metric
+            <View style={styles.statGrid}>
+              <StatTile label="我的更新时间" value={formatTime(myLocation?.received_at)} />
+              <StatTile label="对方更新时间" value={formatTime(visiblePartnerLocation?.received_at)} />
+              <StatTile
                 label="我的电量"
+                tone="primary"
                 value={formatBattery(myLocation?.battery_level, myLocation?.is_charging)}
               />
-              <Metric
+              <StatTile
                 label="对方电量"
+                tone="mint"
                 value={formatBattery(
                   visiblePartnerLocation?.battery_level,
                   visiblePartnerLocation?.is_charging
                 )}
               />
-              <Metric label="后台" value={permission?.backgroundTaskStarted ? "运行中" : "停止"} />
-              <Metric label="记忆点" value={`${memoryPoints.length} 个`} />
+              <StatTile
+                label="后台定位"
+                tone={permission?.backgroundTaskStarted ? "mint" : "plain"}
+                value={permission?.backgroundTaskStarted ? "运行中" : "未运行"}
+              />
+              <StatTile label="记忆点" value={`${memoryPoints.length} 个`} />
             </View>
-            <Text style={styles.status}>{status}</Text>
           </Card>
         </View>
       </SafeScreen>
@@ -432,19 +448,10 @@ export function TrackerScreen({
   );
 }
 
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={styles.metric}>
-      <Text style={styles.label}>{label}</Text>
-      <Text style={styles.value}>{value}</Text>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: colors.surfaceCool
+    backgroundColor: colors.background
   },
   map: {
     ...StyleSheet.absoluteFillObject
@@ -453,156 +460,115 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.surfaceCool
+    backgroundColor: colors.fill
   },
   mapFallbackText: {
     color: colors.muted,
-    fontWeight: "900"
+    fontWeight: "700"
   },
   overlay: {
     flex: 1,
     pointerEvents: "box-none"
   },
-  heart: {
-    color: colors.primary,
-    fontSize: 26,
-    fontWeight: "900"
-  },
   summaryCard: {
-    margin: spacing.lg,
-    marginTop: spacing.lg,
-    gap: spacing.md,
-    backgroundColor: "rgba(255,255,255,0.78)"
+    margin: spacing.md,
+    gap: spacing.md
   },
   summaryTop: {
     flexDirection: "row",
     justifyContent: "space-between",
     gap: spacing.md
   },
-  metricLabel: {
+  summaryLabel: {
     color: colors.muted,
     fontSize: 13,
-    fontWeight: "900"
+    fontWeight: "700"
   },
   distanceText: {
-    color: colors.primaryStrong,
-    fontSize: 30,
-    fontWeight: "900",
-    marginTop: 4
-  },
-  weatherBlock: {
-    alignItems: "flex-end"
-  },
-  weatherText: {
-    color: colors.secondary,
-    fontSize: 16,
-    fontWeight: "900",
-    marginTop: 8
-  },
-  summaryLine: {
-    height: 1,
-    backgroundColor: colors.line
-  },
-  nextRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md
-  },
-  nextText: {
-    flex: 1,
     color: colors.text,
-    fontSize: 18,
-    fontWeight: "800"
+    fontSize: 34,
+    fontWeight: "800",
+    marginTop: 2
   },
-  daysPill: {
+  summaryRight: {
+    alignItems: "flex-end",
+    justifyContent: "center"
+  },
+  partnerName: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: "700"
+  },
+  summaryMeta: {
+    color: colors.muted,
+    fontSize: 13,
+    marginTop: 2
+  },
+  quickRow: {
+    flexDirection: "row",
+    gap: spacing.sm
+  },
+  quickButton: {
+    flex: 1,
+    minHeight: 38,
     borderRadius: radius.full,
-    backgroundColor: colors.surfaceContainer,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm
-  },
-  daysText: {
-    color: colors.primaryStrong,
-    fontWeight: "900"
+    paddingHorizontal: spacing.sm
   },
   sideActions: {
     position: "absolute",
-    right: spacing.lg,
-    bottom: 250,
-    gap: spacing.md
+    right: spacing.md,
+    bottom: 290,
+    gap: spacing.sm
   },
   roundAction: {
-    width: 64,
-    height: 64,
+    width: 48,
+    height: 48,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 32,
-    backgroundColor: "rgba(255,255,255,0.84)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.9)",
+    borderRadius: 24,
+    backgroundColor: "rgba(255,255,255,0.96)",
     ...shadows.card
   },
   roundActionText: {
-    color: colors.primaryStrong,
-    fontSize: 24,
-    fontWeight: "900"
+    color: colors.primary,
+    fontSize: 20,
+    fontWeight: "800"
   },
   sosAction: {
     backgroundColor: colors.danger
   },
   sosText: {
     color: colors.surface,
-    fontWeight: "900"
+    fontSize: 13,
+    fontWeight: "800"
   },
   bottomPanel: {
     position: "absolute",
-    left: spacing.lg,
-    right: spacing.lg,
-    bottom: spacing.lg,
-    gap: spacing.md
-  },
-  quickRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm
-  },
-  quickButton: {
-    minHeight: 44,
-    paddingHorizontal: spacing.md
+    left: spacing.md,
+    right: spacing.md,
+    bottom: spacing.md
   },
   infoPanel: {
-    gap: spacing.md,
-    padding: spacing.md
+    gap: spacing.md
   },
-  row: {
+  sharingRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between"
   },
-  grid: {
+  panelTitle: {
+    color: colors.text,
+    fontSize: 17,
+    fontWeight: "700"
+  },
+  panelSubtitle: {
+    color: colors.muted,
+    fontSize: 13,
+    marginTop: 2
+  },
+  statGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: spacing.sm
-  },
-  metric: {
-    width: "48%",
-    minHeight: 58,
-    justifyContent: "center",
-    borderRadius: radius.lg,
-    backgroundColor: colors.surfaceContainer,
-    paddingHorizontal: spacing.md
-  },
-  label: {
-    color: colors.muted,
-    fontSize: 12,
-    fontWeight: "800"
-  },
-  value: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: "900"
-  },
-  status: {
-    color: colors.muted,
-    fontWeight: "700"
   }
 });

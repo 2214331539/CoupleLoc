@@ -11,9 +11,9 @@ import {
 } from "react-native";
 
 import { buildLocationWebSocketUrl, listChatMessages, sendChatMessage } from "../api/client";
-import { AppHeader, Card, IconBubble, PillButton } from "../components/HeartlineUI";
+import { AppHeader, EmptyState, IconBubble, PillButton } from "../components/HeartlineUI";
 import { SafeScreen } from "../components/SafeScreen";
-import { colors, radius, spacing } from "../theme";
+import { colors, radius, shadows, spacing } from "../theme";
 import type { ChatMessage, Partner, RealtimeEvent, User } from "../types";
 
 type Props = {
@@ -23,15 +23,15 @@ type Props = {
 };
 
 const quickStatuses = [
-  { key: "miss_you", label: "想你", tone: "ghost" as const },
+  { key: "miss_you", label: "想你了", tone: "ghost" as const },
   { key: "on_the_way", label: "在路上", tone: "secondary" as const },
-  { key: "arrived_safe", label: "平安到家", tone: "mint" as const }
+  { key: "arrived_safe", label: "平安到达", tone: "mint" as const },
 ];
 
 export function ChatScreen({ user, partner, token }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [text, setText] = useState("");
-  const [status, setStatus] = useState("正在加载消息");
+  const [status, setStatus] = useState("正在连接");
   const listRef = useRef<FlatList<ChatMessage>>(null);
 
   useEffect(() => {
@@ -55,13 +55,13 @@ export function ChatScreen({ user, partner, token }: Props) {
               ? items
               : [...items, payload.message]
           );
-          setStatus("收到新消息");
+          setStatus("刚收到新消息");
         }
         if (payload.type === "battery.low") {
-          setStatus("另一半电量偏低");
+          setStatus("对方电量偏低");
         }
       } catch {
-        setStatus("收到无法识别的实时消息");
+        setStatus("收到一条无法识别的实时消息");
       }
     };
 
@@ -112,26 +112,25 @@ export function ChatScreen({ user, partner, token }: Props) {
   return (
     <SafeScreen style={styles.screen}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboard}
       >
         <AppHeader
-          left={<IconBubble icon={(partner?.display_name ?? "?").slice(0, 1)} size={48} />}
+          left={<IconBubble icon={(partner?.display_name ?? "?").slice(0, 1)} size={38} />}
+          right={<Text style={styles.more}>•••</Text>}
           subtitle={status}
           title={partner?.display_name ?? "聊天"}
-          right={<Text style={styles.menu}>⋮</Text>}
         />
 
         <FlatList
           ref={listRef}
           contentContainerStyle={styles.messageList}
           data={orderedMessages}
+          keyboardDismissMode="interactive"
+          keyboardShouldPersistTaps="handled"
           keyExtractor={(item) => item.id}
           ListEmptyComponent={
-            <Card style={styles.emptyCard}>
-              <Text style={styles.emptyTitle}>还没有消息</Text>
-              <Text style={styles.emptyBody}>发送一个快捷状态，让另一半知道你在想什么。</Text>
-            </Card>
+            <EmptyState title="还没有消息" body="发一个快捷状态，让对方知道你正在做什么。" />
           }
           renderItem={({ item }) => (
             <MessageBubble isMine={item.sender_user_id === user.id} message={item} />
@@ -152,18 +151,15 @@ export function ChatScreen({ user, partner, token }: Props) {
           </View>
 
           <View style={styles.composer}>
-            <Pressable style={styles.plusButton}>
-              <Text style={styles.plusText}>＋</Text>
-            </Pressable>
             <TextInput
               onChangeText={setText}
-              placeholder={`给${partner?.display_name ?? "另一半"}留言...`}
-              placeholderTextColor={colors.outline}
+              placeholder={`给${partner?.display_name ?? "对方"}留言...`}
+              placeholderTextColor={colors.tertiaryText}
               style={styles.input}
               value={text}
             />
-            <Pressable onPress={() => send()} style={styles.sendButton}>
-              <Text style={styles.sendText}>▷</Text>
+            <Pressable disabled={!text.trim()} onPress={() => send()} style={styles.sendButton}>
+              <Text style={styles.sendText}>↑</Text>
             </Pressable>
           </View>
         </View>
@@ -173,24 +169,11 @@ export function ChatScreen({ user, partner, token }: Props) {
 }
 
 function MessageBubble({ message, isMine }: { message: ChatMessage; isMine: boolean }) {
-  if (message.status_key === "flight_update") {
-    return (
-      <Card style={styles.systemCard}>
-        <IconBubble icon="✈" tone="secondary" />
-        <View style={styles.systemText}>
-          <Text style={styles.systemTitle}>航班更新</Text>
-          <Text style={styles.systemBody}>{message.body}</Text>
-        </View>
-        <Text style={styles.chevron}>›</Text>
-      </Card>
-    );
-  }
-
   return (
     <View style={[styles.bubbleWrap, isMine ? styles.mineWrap : styles.partnerWrap]}>
       <View style={[styles.bubble, isMine ? styles.mineBubble : styles.partnerBubble]}>
         {message.message_type === "quick_status" ? (
-          <Text style={[styles.quickMeta, !isMine && styles.partnerQuickMeta]}>快捷状态</Text>
+          <Text style={[styles.quickMeta, isMine && styles.mineQuickMeta]}>快捷状态</Text>
         ) : null}
         <Text style={[styles.messageText, isMine && styles.mineMessageText]}>{message.body}</Text>
       </View>
@@ -209,31 +192,18 @@ const styles = StyleSheet.create({
   keyboard: {
     flex: 1
   },
-  menu: {
-    color: colors.muted,
-    fontSize: 24,
-    fontWeight: "900"
+  more: {
+    color: colors.primary,
+    fontSize: 18,
+    fontWeight: "700"
   },
   messageList: {
-    padding: spacing.lg,
-    gap: spacing.lg,
+    padding: spacing.md,
+    gap: spacing.md,
     paddingBottom: spacing.xl
   },
-  emptyCard: {
-    alignItems: "center",
-    gap: spacing.sm
-  },
-  emptyTitle: {
-    color: colors.text,
-    fontSize: 18,
-    fontWeight: "900"
-  },
-  emptyBody: {
-    color: colors.muted,
-    textAlign: "center"
-  },
   bubbleWrap: {
-    gap: spacing.sm
+    gap: spacing.xs
   },
   mineWrap: {
     alignItems: "flex-end"
@@ -243,71 +213,46 @@ const styles = StyleSheet.create({
   },
   bubble: {
     maxWidth: "82%",
-    borderRadius: radius.lg,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md
+    borderRadius: 20,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 10
   },
   mineBubble: {
-    borderTopRightRadius: radius.sm,
+    borderBottomRightRadius: 6,
     backgroundColor: colors.primary
   },
   partnerBubble: {
-    borderTopLeftRadius: radius.sm,
-    backgroundColor: "rgba(255,255,255,0.86)",
-    borderWidth: 1,
-    borderColor: colors.line
+    borderBottomLeftRadius: 6,
+    backgroundColor: colors.surface,
+    ...shadows.soft
   },
   quickMeta: {
-    color: colors.surface,
+    color: colors.primary,
     fontSize: 12,
-    fontWeight: "900",
-    marginBottom: spacing.xs
+    fontWeight: "700",
+    marginBottom: 2
   },
-  partnerQuickMeta: {
-    color: colors.primaryStrong
+  mineQuickMeta: {
+    color: "rgba(255,255,255,0.78)"
   },
   messageText: {
-    color: colors.textSoft,
-    fontSize: 17,
-    lineHeight: 26
+    color: colors.text,
+    fontSize: 16,
+    lineHeight: 23
   },
   mineMessageText: {
     color: colors.surface
   },
   timeText: {
-    color: colors.muted,
-    fontSize: 12
-  },
-  systemCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-    borderColor: colors.secondarySoft
-  },
-  systemText: {
-    flex: 1
-  },
-  systemTitle: {
-    color: colors.secondary,
-    fontSize: 16,
-    fontWeight: "900"
-  },
-  systemBody: {
-    color: colors.muted,
-    marginTop: 2
-  },
-  chevron: {
-    color: colors.muted,
-    fontSize: 24
+    color: colors.tertiaryText,
+    fontSize: 11,
+    paddingHorizontal: spacing.sm
   },
   composerWrap: {
-    borderTopLeftRadius: radius.lg,
-    borderTopRightRadius: radius.lg,
-    borderWidth: 1,
-    borderBottomWidth: 0,
-    borderColor: "rgba(255,255,255,0.9)",
-    backgroundColor: "rgba(255,255,255,0.82)",
-    padding: spacing.lg,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.line,
+    backgroundColor: "rgba(248,248,248,0.94)",
+    padding: spacing.md,
     gap: spacing.md
   },
   quickRow: {
@@ -316,7 +261,8 @@ const styles = StyleSheet.create({
   },
   quickButton: {
     flex: 1,
-    minHeight: 44,
+    minHeight: 38,
+    borderRadius: radius.full,
     paddingHorizontal: spacing.sm
   },
   composer: {
@@ -324,38 +270,29 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: spacing.sm
   },
-  plusButton: {
-    width: 44,
-    height: 44,
-    alignItems: "center",
-    justifyContent: "center"
-  },
-  plusText: {
-    color: colors.muted,
-    fontSize: 24
-  },
   input: {
     flex: 1,
-    minHeight: 54,
+    height: 44,
     borderRadius: radius.full,
     backgroundColor: colors.surface,
     color: colors.text,
     fontSize: 16,
-    paddingHorizontal: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.line
+    paddingHorizontal: spacing.md,
+    paddingVertical: 0,
+    includeFontPadding: false,
+    textAlignVertical: "center"
   },
   sendButton: {
-    width: 58,
-    height: 58,
+    width: 44,
+    height: 44,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 29,
+    borderRadius: 22,
     backgroundColor: colors.primary
   },
   sendText: {
     color: colors.surface,
     fontSize: 24,
-    fontWeight: "900"
+    fontWeight: "800"
   }
 });

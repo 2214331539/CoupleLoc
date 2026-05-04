@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { acceptPairingInvite, createPairingInvite } from "../api/client";
-import { AppHeader, Card, IconBubble, PillButton } from "../components/HeartlineUI";
+import { AppHeader, Card, IconBubble, PillButton, ScreenTitle } from "../components/HeartlineUI";
 import { SafeScreen } from "../components/SafeScreen";
 import { colors, radius, spacing } from "../theme";
 import type { PairingInvite, PairingStatus, User } from "../types";
@@ -24,15 +24,19 @@ export function PairingScreen({ user, onLogout, onPairingChanged }: Props) {
     setMessage(null);
     try {
       setInvite(await createPairingInvite());
-      setMessage("正在等待另一半加入...");
+      setMessage("心动码已生成，等待对方加入。");
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : "创建配对码失败");
+      setMessage(err instanceof Error ? err.message : "创建心动码失败");
     } finally {
       setBusy(false);
     }
   };
 
   const acceptInvite = async () => {
+    if (!code.trim()) {
+      setMessage("请输入对方的心动码");
+      return;
+    }
     setBusy(true);
     setMessage(null);
     try {
@@ -44,77 +48,50 @@ export function PairingScreen({ user, onLogout, onPairingChanged }: Props) {
     }
   };
 
-  const pairingCode = invite?.code ?? "LOVE2U";
-
   return (
     <SafeScreen style={styles.screen}>
       <AppHeader
         left={
-          <Pressable onPress={onLogout} style={styles.backButton}>
-            <Text style={styles.backText}>←</Text>
+          <Pressable onPress={onLogout}>
+            <Text style={styles.headerAction}>退出</Text>
           </Pressable>
         }
+        title="配对"
       />
 
-      <View style={styles.content}>
-        <View style={styles.heading}>
-          <Text style={styles.title}>开启你们的距离</Text>
-          <Text style={styles.subtitle}>邀请另一半加入，同步你们的每一个心跳</Text>
-        </View>
+      <ScrollView contentContainerStyle={styles.content}>
+        <ScreenTitle
+          subtitle={`你好，${user.display_name}。完成配对后，你们就可以共享实时位置。`}
+          title="添加另一半"
+        />
 
-        <Card style={styles.inviteCard}>
-          <View style={styles.qrBox}>
-            <View style={styles.fakeQr}>
-              <Text style={styles.fakeQrText}>♡</Text>
-            </View>
-          </View>
-
-          <View style={styles.codePanel}>
-            <Text style={styles.codeLabel}>专属配对码</Text>
-            <Text style={styles.code}>{pairingCode}</Text>
-            <View style={styles.codeActions}>
-              <PillButton label="复制" tone="ghost" style={styles.smallButton} />
-              <PillButton label="分享" tone="primary" style={styles.smallButton} />
-            </View>
-          </View>
-
-          <Text style={styles.waiting}>{message ?? `你好，${user.display_name}`}</Text>
+        <Card style={styles.codeCard}>
+          <IconBubble icon="♥" size={48} tone="rose" />
+          <Text style={styles.codeLabel}>我的心动码</Text>
+          <Text selectable style={styles.codeText}>
+            {invite?.code ?? "尚未生成"}
+          </Text>
+          <PillButton disabled={busy} label="生成心动码" onPress={createInvite} />
         </Card>
 
-        <Pressable onPress={createInvite} disabled={busy}>
-          <Card style={styles.rowCard}>
-            <IconBubble icon="⌁" tone="mint" />
-            <View style={styles.rowText}>
-              <Text style={styles.rowTitle}>生成新的配对码</Text>
-              <Text style={styles.rowSubtitle}>24 小时内有效</Text>
-            </View>
-            <Text style={styles.chevron}>›</Text>
-          </Card>
-        </Pressable>
-
-        <Card style={styles.acceptCard}>
-          <View style={styles.acceptHeader}>
-            <IconBubble icon="⌗" tone="mint" />
-            <Text style={styles.rowTitle}>输入另一半的码</Text>
+        <Card style={styles.joinCard}>
+          <View>
+            <Text style={styles.cardTitle}>输入对方的心动码</Text>
+            <Text style={styles.cardSubtitle}>心动码 24 小时内有效。</Text>
           </View>
           <TextInput
             autoCapitalize="characters"
             onChangeText={setCode}
             placeholder="例如 LOVE2U"
-            placeholderTextColor={colors.outline}
+            placeholderTextColor={colors.tertiaryText}
             style={styles.input}
             value={code}
           />
           <PillButton disabled={busy || !code.trim()} label="立即加入" onPress={acceptInvite} />
         </Card>
 
-        <Card style={styles.tipCard}>
-          <Text style={styles.tipTitle}>✦ 小贴士</Text>
-          <Text style={styles.tipBody}>
-            让你的另一半输入上面的代码，你们就能立即开始共享时刻。
-          </Text>
-        </Card>
-      </View>
+        {message ? <Text style={styles.status}>{message}</Text> : null}
+      </ScrollView>
     </SafeScreen>
   );
 }
@@ -124,145 +101,57 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background
   },
-  backButton: {
-    width: 42,
-    height: 42,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: radius.full,
-    backgroundColor: colors.surfaceContainer
-  },
-  backText: {
-    color: colors.primaryStrong,
-    fontSize: 22
+  headerAction: {
+    color: colors.primary,
+    fontSize: 16,
+    fontWeight: "600"
   },
   content: {
-    flex: 1,
-    padding: spacing.lg,
-    gap: spacing.lg
-  },
-  heading: {
-    alignItems: "center",
-    gap: spacing.sm
-  },
-  title: {
-    color: colors.text,
-    fontSize: 28,
-    fontWeight: "900"
-  },
-  subtitle: {
-    color: colors.text,
-    fontSize: 16,
-    textAlign: "center"
-  },
-  inviteCard: {
+    padding: spacing.md,
     gap: spacing.lg,
-    alignItems: "center"
+    paddingBottom: spacing.xl
   },
-  qrBox: {
-    width: 220,
-    height: 220,
+  codeCard: {
     alignItems: "center",
-    justifyContent: "center",
-    borderRadius: radius.xl,
-    backgroundColor: colors.surface
-  },
-  fakeQr: {
-    width: 112,
-    height: 112,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: radius.md,
-    borderWidth: 8,
-    borderColor: colors.line,
-    backgroundColor: colors.surfaceContainer
-  },
-  fakeQrText: {
-    color: colors.primaryStrong,
-    fontSize: 26,
-    fontWeight: "900"
-  },
-  codePanel: {
-    width: "100%",
-    alignItems: "center",
-    gap: spacing.sm,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surfaceContainer,
+    gap: spacing.md,
     padding: spacing.lg
   },
   codeLabel: {
     color: colors.muted,
+    fontSize: 13,
+    fontWeight: "700"
+  },
+  codeText: {
+    color: colors.text,
+    fontSize: 32,
     fontWeight: "800"
   },
-  code: {
-    color: colors.primaryStrong,
-    fontSize: 28,
-    fontWeight: "900",
-    letterSpacing: 0
-  },
-  codeActions: {
-    flexDirection: "row",
+  joinCard: {
     gap: spacing.md
   },
-  smallButton: {
-    minWidth: 130,
-    minHeight: 46
-  },
-  waiting: {
-    color: colors.secondary,
-    fontSize: 16,
-    fontWeight: "900"
-  },
-  rowCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md
-  },
-  rowText: {
-    flex: 1
-  },
-  rowTitle: {
+  cardTitle: {
     color: colors.text,
     fontSize: 17,
-    fontWeight: "900"
+    fontWeight: "700"
   },
-  rowSubtitle: {
+  cardSubtitle: {
     color: colors.muted,
+    fontSize: 14,
     marginTop: 2
   },
-  chevron: {
-    color: colors.muted,
-    fontSize: 24
-  },
-  acceptCard: {
-    gap: spacing.md
-  },
-  acceptHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md
-  },
   input: {
-    minHeight: 58,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surface,
+    minHeight: 48,
+    borderRadius: radius.md,
+    backgroundColor: colors.fill,
     color: colors.text,
-    fontSize: 18,
-    fontWeight: "800",
-    paddingHorizontal: spacing.lg
+    fontSize: 17,
+    fontWeight: "600",
+    paddingHorizontal: spacing.md
   },
-  tipCard: {
-    borderColor: colors.line,
-    backgroundColor: "rgba(255,255,255,0.78)",
-    gap: spacing.sm
-  },
-  tipTitle: {
-    color: colors.primaryStrong,
-    fontSize: 16,
-    fontWeight: "900"
-  },
-  tipBody: {
-    color: colors.primaryStrong,
-    lineHeight: 22
+  status: {
+    color: colors.muted,
+    fontSize: 14,
+    lineHeight: 20,
+    paddingHorizontal: spacing.sm
   }
 });

@@ -25,7 +25,7 @@ from app.schemas import (
     TokenResponse,
     UserPublic,
 )
-from app.services.sms import send_sms_code
+from app.services.sms import is_sms_debug_mode, send_sms_code
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -175,7 +175,14 @@ async def send_code(
         attempts=0,
     )
     session.add(record)
-    await send_sms_code(phone_number, code, payload.purpose)
+    try:
+        await send_sms_code(phone_number, code, payload.purpose)
+    except RuntimeError as exc:
+        await session.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(exc),
+        ) from exc
     await session.commit()
 
     return SmsCodeSendResponse(
@@ -183,7 +190,7 @@ async def send_code(
         purpose=payload.purpose,
         expires_at=expires_at,
         resend_after_seconds=settings.sms_resend_cooldown_seconds,
-        debug_code=code if settings.sms_provider.lower() == "log" else None,
+        debug_code=code if is_sms_debug_mode() else None,
     )
 
 

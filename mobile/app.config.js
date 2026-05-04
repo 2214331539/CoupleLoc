@@ -11,6 +11,7 @@ module.exports = {
     android: {
       package: "com.coupleloc.app",
       usesCleartextTraffic: true,
+      softwareKeyboardLayoutMode: "resize",
       permissions: [
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION",

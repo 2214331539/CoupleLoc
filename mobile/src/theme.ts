@@ -1,34 +1,42 @@
 export const colors = {
-  background: "#f6f7f9",
-  surface: "#ffffff",
-  surfaceWarm: "#f2f4f7",
-  surfaceCool: "#eef2f5",
-  surfaceContainer: "#eceff3",
-  surfaceContainerHigh: "#e1e6ec",
-  text: "#16181d",
-  textSoft: "#303640",
-  muted: "#626b78",
-  line: "#dde3ea",
-  outline: "#aeb8c4",
-  primary: "#a44756",
-  primaryStrong: "#78323e",
-  primaryDark: "#4b1f28",
-  primarySoft: "#f3dfe3",
-  secondary: "#2f6370",
-  secondarySoft: "#dcecef",
-  tertiary: "#526c59",
-  tertiarySoft: "#e2ece5",
-  lavender: "#8d83a7",
-  danger: "#b3261e",
-  dangerSoft: "#f8ddda",
-  shadow: "#111827"
+  background: "#F2F2F7",
+  groupedBackground: "#F2F2F7",
+  surface: "#FFFFFF",
+  elevated: "#FFFFFF",
+  fill: "#F7F7FA",
+  fillStrong: "#E5E5EA",
+  surfaceWarm: "#F7F7FA",
+  surfaceCool: "#F2F2F7",
+  surfaceContainer: "#F7F7FA",
+  surfaceContainerHigh: "#E5E5EA",
+  text: "#111111",
+  textSoft: "#2C2C2E",
+  muted: "#6E6E73",
+  tertiaryText: "#8E8E93",
+  line: "#D1D1D6",
+  outline: "#AEAEB2",
+  primary: "#007AFF",
+  primaryStrong: "#005ECB",
+  primaryDark: "#003E7E",
+  primarySoft: "#E5F1FF",
+  secondary: "#5856D6",
+  secondarySoft: "#ECEBFF",
+  tertiary: "#34C759",
+  tertiarySoft: "#E8F7EE",
+  warning: "#FF9500",
+  warningSoft: "#FFF3DF",
+  danger: "#FF3B30",
+  dangerSoft: "#FFE8E6",
+  rose: "#FF2D55",
+  roseSoft: "#FFE8EE",
+  shadow: "#000000"
 };
 
 export const radius = {
   sm: 10,
-  md: 18,
-  lg: 26,
-  xl: 34,
+  md: 14,
+  lg: 18,
+  xl: 24,
   full: 999
 };
 
@@ -37,22 +45,22 @@ export const spacing = {
   sm: 8,
   md: 16,
   lg: 24,
-  xl: 40
+  xl: 32
 };
 
 export const shadows = {
   card: {
     shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.07,
-    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
     elevation: 2
   },
   soft: {
     shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    elevation: 2
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 1
   }
 };

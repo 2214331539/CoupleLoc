@@ -7,16 +7,26 @@ import {
   deleteCalendarEvent,
   listCalendarEvents,
 } from "../api/client";
-import { AppHeader, Card, IconBubble, PillButton } from "../components/HeartlineUI";
+import {
+  AppHeader,
+  Card,
+  EmptyState,
+  IconBubble,
+  PillButton,
+  ScreenTitle,
+  StatusPill,
+} from "../components/HeartlineUI";
 import { SafeScreen } from "../components/SafeScreen";
 import { colors, radius, spacing } from "../theme";
-import type { CalendarEvent, RealtimeEvent } from "../types";
+import type { CalendarEvent, PairingStatus, RealtimeEvent } from "../types";
 
 type Props = {
+  pairing: PairingStatus;
   token: string;
 };
 
 const timeOptions = ["09:00", "14:00", "19:00", "21:00"];
+const weekDays = ["日", "一", "二", "三", "四", "五", "六"];
 
 function monthTitle(date: Date) {
   return `${date.getFullYear()}年 ${date.getMonth() + 1}月`;
@@ -39,29 +49,36 @@ function makeStartAt(date: Date, time: string) {
 
 function eventTone(event: CalendarEvent) {
   const text = `${event.title} ${event.notes ?? ""}`;
-  if (/飞|航班|机票|车票|travel|flight/i.test(text)) {
+  if (/机票|航班|车票|高铁|travel|flight/i.test(text)) {
     return "secondary" as const;
   }
-  if (/纪念|相恋|生日|anniversary/i.test(text)) {
-    return "primary" as const;
+  if (/纪念|生日|相恋|anniversary/i.test(text)) {
+    return "rose" as const;
   }
   return "mint" as const;
 }
 
-export function CalendarScreen({ token }: Props) {
+export function CalendarScreen({ pairing, token }: Props) {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
   const [selectedDate, setSelectedDate] = useState(() => new Date());
   const [selectedTime, setSelectedTime] = useState("19:00");
-  const [status, setStatus] = useState("正在加载日历");
+  const [status, setStatus] = useState("正在同步日历");
   const [showForm, setShowForm] = useState(false);
   const [month, setMonth] = useState(() => new Date());
+  const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const reload = async () => {
+    if (!pairing.paired) {
+      setEvents([]);
+      setStatus("请先在「我的」页面完成配对");
+      return;
+    }
     try {
       setEvents(await listCalendarEvents());
-      setStatus("日历已同步");
+      setStatus("已同步");
     } catch (err) {
       setStatus(err instanceof Error ? err.message : "日历加载失败");
     }
@@ -69,9 +86,12 @@ export function CalendarScreen({ token }: Props) {
 
   useEffect(() => {
     reload();
-  }, []);
+  }, [pairing.paired]);
 
   useEffect(() => {
+    if (!pairing.paired) {
+      return;
+    }
     const socket = new WebSocket(buildLocationWebSocketUrl(token));
     socket.onmessage = (event) => {
       try {
@@ -92,7 +112,7 @@ export function CalendarScreen({ token }: Props) {
       clearInterval(keepAlive);
       socket.close();
     };
-  }, [token]);
+  }, [pairing.paired, token]);
 
   const days = useMemo(() => {
     const first = new Date(month.getFullYear(), month.getMonth(), 1);
@@ -119,42 +139,56 @@ export function CalendarScreen({ token }: Props) {
     [events, month]
   );
 
-  const upcoming = useMemo(
+  const sortedEvents = useMemo(
     () =>
       [...events]
-        .filter((event) => +new Date(event.starts_at) >= Date.now() - 24 * 60 * 60 * 1000)
         .sort((a, b) => +new Date(a.starts_at) - +new Date(b.starts_at)),
     [events]
   );
 
   const submit = async () => {
+    if (!pairing.paired) {
+      setStatus("请先在「我的」页面完成配对");
+      return;
+    }
     if (!title.trim()) {
       setStatus("请输入事件标题");
       return;
     }
+    setSaving(true);
     try {
       const event = await createCalendarEvent({
         title: title.trim(),
         notes: notes.trim() || null,
         starts_at: makeStartAt(selectedDate, selectedTime)
       });
-      setEvents((items) => [...items, event]);
+      setEvents((items) =>
+        [...items.filter((item) => item.id !== event.id), event].sort(
+          (a, b) => +new Date(a.starts_at) - +new Date(b.starts_at)
+        )
+      );
       setTitle("");
       setNotes("");
       setShowForm(false);
       setStatus("事件已添加");
     } catch (err) {
-      setStatus(err instanceof Error ? err.message : "添加事件失败");
+      const message = err instanceof Error ? err.message : "添加事件失败";
+      setStatus(message === "No active partner" ? "请先在「我的」页面完成配对" : message);
+    } finally {
+      setSaving(false);
     }
   };
 
   const remove = async (eventId: string) => {
+    setDeletingId(eventId);
     try {
       await deleteCalendarEvent(eventId);
       setEvents((items) => items.filter((item) => item.id !== eventId));
       setStatus("事件已删除");
     } catch (err) {
       setStatus(err instanceof Error ? err.message : "删除事件失败");
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -170,23 +204,31 @@ export function CalendarScreen({ token }: Props) {
 
   return (
     <SafeScreen style={styles.screen}>
-      <AppHeader />
+      <AppHeader title="日历" subtitle={status} />
       <ScrollView contentContainerStyle={styles.content}>
+        <ScreenTitle
+          action={<StatusPill label={`${events.length} 个计划`} tone="plain" />}
+          subtitle={
+            pairing.paired
+              ? "把见面日、纪念日和出行安排放在同一个地方。"
+              : "完成配对后即可共同编辑日历。"
+          }
+          title="共享日历"
+        />
+
         <Card style={styles.calendarCard}>
           <View style={styles.monthHeader}>
+            <Pressable onPress={() => moveMonth(-1)} style={styles.monthButton}>
+              <Text style={styles.monthButtonText}>‹</Text>
+            </Pressable>
             <Text style={styles.monthTitle}>{monthTitle(month)}</Text>
-            <View style={styles.monthButtons}>
-              <Pressable onPress={() => moveMonth(-1)} style={styles.monthButton}>
-                <Text style={styles.monthButtonText}>‹</Text>
-              </Pressable>
-              <Pressable onPress={() => moveMonth(1)} style={styles.monthButton}>
-                <Text style={styles.monthButtonText}>›</Text>
-              </Pressable>
-            </View>
+            <Pressable onPress={() => moveMonth(1)} style={styles.monthButton}>
+              <Text style={styles.monthButtonText}>›</Text>
+            </Pressable>
           </View>
 
           <View style={styles.weekRow}>
-            {["日", "一", "二", "三", "四", "五", "六"].map((day) => (
+            {weekDays.map((day) => (
               <Text key={day} style={styles.weekday}>
                 {day}
               </Text>
@@ -208,34 +250,35 @@ export function CalendarScreen({ token }: Props) {
                   style={[styles.dayCell, selected && styles.dayCellSelected]}
                 >
                   {day ? <Text style={[styles.dayText, selected && styles.dayTextSelected]}>{day}</Text> : null}
-                  {dayEvents.slice(0, 2).map((event) => (
-                    <View
-                      key={event.id}
-                      style={[
-                        styles.eventDot,
-                        eventTone(event) === "secondary" && styles.eventDotSecondary,
-                        eventTone(event) === "mint" && styles.eventDotMint,
-                      ]}
-                    />
-                  ))}
+                  <View style={styles.dotRow}>
+                    {dayEvents.slice(0, 3).map((event) => (
+                      <View
+                        key={event.id}
+                        style={[
+                          styles.eventDot,
+                          eventTone(event) === "secondary" && styles.eventDotSecondary,
+                          eventTone(event) === "rose" && styles.eventDotRose,
+                        ]}
+                      />
+                    ))}
+                  </View>
                 </Pressable>
               );
             })}
           </View>
-
-          <View style={styles.legendRow}>
-            <Legend color={colors.secondary} label="见面日" />
-            <Legend color={colors.primaryStrong} label="纪念日" />
-            <Legend color={colors.tertiary} label="飞行日" />
-          </View>
         </Card>
 
-        <View style={styles.sectionRow}>
-          <Text style={styles.sectionTitle}>近期动态</Text>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>近期计划</Text>
           <PillButton
-            label={showForm ? "收起" : "+ 添加事件"}
-            onPress={() => setShowForm((value) => !value)}
+            disabled={!pairing.paired}
+            label={showForm ? "收起" : "添加"}
+            onPress={() => {
+              setStatus("选择日期和时间后保存到共享日历");
+              setShowForm((value) => !value);
+            }}
             style={styles.addButton}
+            tone="ghost"
           />
         </View>
 
@@ -262,33 +305,40 @@ export function CalendarScreen({ token }: Props) {
             </View>
             <TextInput
               onChangeText={setTitle}
-              placeholder="事件标题，例如 下一次飞行"
-              placeholderTextColor={colors.outline}
+              placeholder="事件标题，例如 下一次见面"
+              placeholderTextColor={colors.tertiaryText}
               style={styles.input}
               value={title}
             />
             <TextInput
               onChangeText={setNotes}
-              placeholder="备注，例如 航班号 CA937 | 13:45 起飞"
-              placeholderTextColor={colors.outline}
+              placeholder="备注，例如 航班号 / 车次 / 纪念日安排"
+              placeholderTextColor={colors.tertiaryText}
               style={styles.input}
               value={notes}
             />
-            <PillButton label="保存事件" onPress={submit} />
+            <PillButton
+              disabled={saving}
+              label={saving ? "保存中..." : "保存事件"}
+              onPress={submit}
+            />
           </Card>
         ) : null}
 
-        <Text style={styles.status}>{status}</Text>
+        <Text style={styles.statusText}>{status}</Text>
 
         <View style={styles.eventList}>
-          {upcoming.length ? (
-            upcoming.map((event) => (
-              <EventCard key={event.id} event={event} onDelete={() => remove(event.id)} />
+          {sortedEvents.length ? (
+            sortedEvents.map((event) => (
+              <EventCard
+                deleting={deletingId === event.id}
+                key={event.id}
+                event={event}
+                onDelete={() => remove(event.id)}
+              />
             ))
           ) : (
-            <Card>
-              <Text style={styles.emptyText}>还没有计划，添加一个见面日吧。</Text>
-            </Card>
+            <EmptyState title="暂无计划" body="添加一个见面日，让倒计时有明确目标。" />
           )}
         </View>
       </ScrollView>
@@ -296,43 +346,42 @@ export function CalendarScreen({ token }: Props) {
   );
 }
 
-function Legend({ color, label }: { color: string; label: string }) {
-  return (
-    <View style={styles.legend}>
-      <View style={[styles.legendDot, { backgroundColor: color }]} />
-      <Text style={styles.legendText}>{label}</Text>
-    </View>
-  );
-}
-
-function EventCard({ event, onDelete }: { event: CalendarEvent; onDelete: () => void }) {
+function EventCard({
+  event,
+  deleting,
+  onDelete,
+}: {
+  event: CalendarEvent;
+  deleting: boolean;
+  onDelete: () => void;
+}) {
   const tone = eventTone(event);
   const starts = new Date(event.starts_at);
   const diffDays = Math.ceil((+starts - Date.now()) / (24 * 60 * 60 * 1000));
   return (
-    <Card
-      style={[
-        styles.eventCard,
-        tone === "secondary" && styles.eventCardSecondary,
-        tone === "mint" && styles.eventCardMint,
-      ]}
-    >
+    <Card style={styles.eventCard}>
       <IconBubble
-        icon={tone === "secondary" ? "✈" : tone === "primary" ? "▣" : "♨"}
-        tone={tone === "secondary" ? "secondary" : tone === "mint" ? "mint" : "primary"}
+        icon={tone === "secondary" ? "✈" : tone === "rose" ? "♥" : "✓"}
+        tone={tone === "secondary" ? "secondary" : tone === "rose" ? "rose" : "mint"}
       />
       <View style={styles.eventText}>
         <View style={styles.eventTitleRow}>
-          <Text style={styles.eventTitle}>{event.title}</Text>
+          <Text numberOfLines={1} style={styles.eventTitle}>
+            {event.title}
+          </Text>
           <Text style={styles.eventBadge}>
-            {diffDays > 0 ? `${diffDays}天后` : starts.toLocaleDateString()}
+            {diffDays > 0 ? `${diffDays} 天后` : starts.toLocaleDateString()}
           </Text>
         </View>
-        {event.notes ? <Text style={styles.eventNotes}>{event.notes}</Text> : null}
+        {event.notes ? (
+          <Text numberOfLines={2} style={styles.eventNotes}>
+            {event.notes}
+          </Text>
+        ) : null}
         <Text style={styles.eventMeta}>{starts.toLocaleString()}</Text>
       </View>
-      <Pressable onPress={onDelete} style={styles.deleteButton}>
-        <Text style={styles.deleteText}>×</Text>
+      <Pressable disabled={deleting} onPress={onDelete} style={styles.deleteButton}>
+        <Text style={styles.deleteText}>{deleting ? "..." : "删除"}</Text>
       </Pressable>
     </Card>
   );
@@ -344,12 +393,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background
   },
   content: {
-    padding: spacing.lg,
+    padding: spacing.md,
     gap: spacing.lg,
     paddingBottom: spacing.xl
   },
   calendarCard: {
-    gap: spacing.lg
+    gap: spacing.md
   },
   monthHeader: {
     flexDirection: "row",
@@ -358,36 +407,31 @@ const styles = StyleSheet.create({
   },
   monthTitle: {
     color: colors.text,
-    fontSize: 24,
-    fontWeight: "900"
-  },
-  monthButtons: {
-    flexDirection: "row",
-    gap: spacing.sm
+    fontSize: 20,
+    fontWeight: "800"
   },
   monthButton: {
-    width: 40,
-    height: 40,
+    width: 38,
+    height: 38,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 21,
-    backgroundColor: "rgba(255,255,255,0.82)",
-    borderWidth: 1,
-    borderColor: colors.line
+    borderRadius: 19,
+    backgroundColor: colors.fill
   },
   monthButtonText: {
-    color: colors.text,
-    fontSize: 26,
-    fontWeight: "900"
+    color: colors.primary,
+    fontSize: 28,
+    fontWeight: "600"
   },
   weekRow: {
     flexDirection: "row"
   },
   weekday: {
     flex: 1,
-    color: colors.muted,
+    color: colors.tertiaryText,
     textAlign: "center",
-    fontWeight: "900"
+    fontSize: 12,
+    fontWeight: "700"
   },
   dayGrid: {
     flexDirection: "row",
@@ -395,7 +439,7 @@ const styles = StyleSheet.create({
   },
   dayCell: {
     width: `${100 / 7}%`,
-    minHeight: 50,
+    minHeight: 48,
     alignItems: "center",
     justifyContent: "center",
     gap: 3,
@@ -407,74 +451,59 @@ const styles = StyleSheet.create({
   dayText: {
     color: colors.text,
     fontSize: 16,
-    fontWeight: "700"
+    fontWeight: "600"
   },
   dayTextSelected: {
-    color: colors.surface,
-    fontWeight: "900"
+    color: colors.surface
+  },
+  dotRow: {
+    minHeight: 7,
+    flexDirection: "row",
+    gap: 2
   },
   eventDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: colors.primaryStrong
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: colors.tertiary
   },
   eventDotSecondary: {
     backgroundColor: colors.secondary
   },
-  eventDotMint: {
-    backgroundColor: colors.tertiary
+  eventDotRose: {
+    backgroundColor: colors.rose
   },
-  legendRow: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    borderTopWidth: 1,
-    borderTopColor: colors.line,
-    paddingTop: spacing.md
-  },
-  legend: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm
-  },
-  legendDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5
-  },
-  legendText: {
-    color: colors.muted,
-    fontWeight: "800"
-  },
-  sectionRow: {
+  sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between"
   },
   sectionTitle: {
     color: colors.text,
-    fontSize: 24,
-    fontWeight: "900"
+    fontSize: 22,
+    fontWeight: "800"
   },
   addButton: {
-    minHeight: 48
+    minHeight: 36,
+    paddingHorizontal: spacing.md
   },
   formCard: {
     gap: spacing.md
   },
   selectedDateBox: {
-    borderRadius: radius.lg,
-    backgroundColor: colors.surfaceContainer,
+    borderRadius: radius.md,
+    backgroundColor: colors.fill,
     padding: spacing.md
   },
   selectedDateLabel: {
     color: colors.muted,
-    fontWeight: "800"
+    fontSize: 13,
+    fontWeight: "700"
   },
   selectedDateText: {
     color: colors.text,
-    fontSize: 18,
-    fontWeight: "900",
+    fontSize: 17,
+    fontWeight: "700",
     marginTop: 3
   },
   timeRow: {
@@ -484,9 +513,7 @@ const styles = StyleSheet.create({
   },
   timeChip: {
     borderRadius: radius.full,
-    backgroundColor: "rgba(255,255,255,0.82)",
-    borderWidth: 1,
-    borderColor: colors.line,
+    backgroundColor: colors.fill,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm
   },
@@ -494,39 +521,36 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary
   },
   timeText: {
-    color: colors.muted,
-    fontWeight: "900"
+    color: colors.textSoft,
+    fontWeight: "700"
   },
   timeTextActive: {
     color: colors.surface
   },
   input: {
-    minHeight: 52,
-    borderRadius: radius.lg,
-    backgroundColor: "rgba(255,255,255,0.88)",
+    height: 48,
+    borderRadius: radius.md,
+    backgroundColor: colors.fill,
     color: colors.text,
-    borderWidth: 1,
-    borderColor: colors.line,
-    paddingHorizontal: spacing.lg
+    fontSize: 16,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 0,
+    includeFontPadding: false,
+    textAlignVertical: "center"
   },
-  status: {
+  statusText: {
     color: colors.muted,
-    fontWeight: "800"
+    fontSize: 13,
+    lineHeight: 18,
+    paddingHorizontal: spacing.sm
   },
   eventList: {
-    gap: spacing.lg
+    gap: spacing.md
   },
   eventCard: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.md,
-    borderColor: colors.primarySoft
-  },
-  eventCardSecondary: {
-    borderColor: colors.secondarySoft
-  },
-  eventCardMint: {
-    borderColor: colors.tertiarySoft
+    gap: spacing.md
   },
   eventText: {
     flex: 1,
@@ -540,41 +564,39 @@ const styles = StyleSheet.create({
   eventTitle: {
     flex: 1,
     color: colors.text,
-    fontSize: 17,
-    fontWeight: "900"
+    fontSize: 16,
+    fontWeight: "700"
   },
   eventBadge: {
     overflow: "hidden",
     borderRadius: radius.full,
-    backgroundColor: colors.surfaceContainer,
-    color: colors.primaryStrong,
+    backgroundColor: colors.fill,
+    color: colors.textSoft,
     paddingHorizontal: spacing.sm,
     paddingVertical: 3,
     fontSize: 12,
-    fontWeight: "900"
+    fontWeight: "700"
   },
   eventNotes: {
     color: colors.muted,
-    fontSize: 15
+    fontSize: 14,
+    lineHeight: 19
   },
   eventMeta: {
-    color: colors.secondary,
-    fontWeight: "800"
+    color: colors.tertiaryText,
+    fontSize: 13,
+    fontWeight: "600"
   },
   deleteButton: {
-    width: 36,
-    height: 36,
-    alignItems: "center",
-    justifyContent: "center"
+    minHeight: 34,
+    justifyContent: "center",
+    borderRadius: radius.full,
+    backgroundColor: colors.dangerSoft,
+    paddingHorizontal: spacing.sm
   },
   deleteText: {
     color: colors.danger,
-    fontSize: 26,
-    fontWeight: "900"
-  },
-  emptyText: {
-    color: colors.muted,
-    textAlign: "center",
-    fontWeight: "800"
+    fontSize: 12,
+    fontWeight: "700"
   }
 });
