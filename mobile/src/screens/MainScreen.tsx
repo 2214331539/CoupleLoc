@@ -41,6 +41,12 @@ export function MainScreen(props: Props) {
   };
 
   useEffect(() => {
+    if (!props.pairing.paired) {
+      setActiveTab("profile");
+    }
+  }, [props.pairing.paired]);
+
+  useEffect(() => {
     if (props.suspended) {
       return;
     }
@@ -50,6 +56,9 @@ export function MainScreen(props: Props) {
       try {
         const payload = JSON.parse(event.data) as RealtimeEvent;
         if (payload.type === "pairing.request_resolved" && payload.pairing?.paired) {
+          props.onPairingChanged(payload.pairing);
+        }
+        if (payload.type === "pairing.ended") {
           props.onPairingChanged(payload.pairing);
         }
       } catch {

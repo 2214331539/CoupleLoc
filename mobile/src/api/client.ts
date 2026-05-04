@@ -227,6 +227,12 @@ export function rejectPairingRequest(requestId: string) {
   });
 }
 
+export function endPairing() {
+  return request<PairingStatus>("/pairing/me", {
+    method: "DELETE"
+  });
+}
+
 export function fetchSharingSettings() {
   return request<SharingSettings>("/locations/sharing");
 }

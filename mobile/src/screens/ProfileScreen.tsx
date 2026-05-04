@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { Linking, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
+import { Alert, Linking, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
 
 import {
   approvePairingRequest,
   buildLocationWebSocketUrl,
   createPairingInvite,
+  endPairing,
   listIncomingPairingRequests,
   listOutgoingPairingRequests,
   rejectPairingRequest,
@@ -227,6 +228,40 @@ export function ProfileScreen({
     }
   };
 
+  const confirmEndPairing = () => {
+    if (!pairing.paired) {
+      setStatus("当前还没有配对关系");
+      return;
+    }
+
+    Alert.alert(
+      "解除配对",
+      "解除后双方将不能继续查看位置、聊天、日历和记忆点。历史数据不会被删除，重新配对后仍可继续使用。",
+      [
+        { text: "取消", style: "cancel" },
+        {
+          text: "解除",
+          style: "destructive",
+          onPress: async () => {
+            setBusy(true);
+            try {
+              const next = await endPairing();
+              setInvite(null);
+              setIncomingRequests([]);
+              setOutgoingRequests([]);
+              onPairingChanged(next);
+              setStatus("已解除配对");
+            } catch (err) {
+              setStatus(err instanceof Error ? err.message : "解除配对失败");
+            } finally {
+              setBusy(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
   return (
     <SafeScreen style={styles.screen}>
       <AppHeader
@@ -348,6 +383,15 @@ export function ProfileScreen({
         </Section>
 
         <Section title="账户">
+          {pairing.paired ? (
+            <ListRow
+              destructive
+              left={<IconBubble icon="♡" tone="plain" />}
+              onPress={confirmEndPairing}
+              subtitle="断开当前关系，不删除历史聊天、日历和记忆点"
+              title="解除配对"
+            />
+          ) : null}
           <ListRow
             destructive
             left={<IconBubble icon="↩" tone="plain" />}

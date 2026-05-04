@@ -171,6 +171,9 @@ Behavior:
   both users.
 - `POST /pairing/requests/{request_id}/reject` marks the request rejected and
   notifies the requester.
+- `DELETE /pairing/me` changes the current active couple to `status = ended`
+  and sends `pairing.ended` realtime events to both users. It does not delete
+  chat messages, calendar events, memory points, or latest locations.
 
 ## `couples`
 
@@ -182,7 +185,7 @@ enabled.
 | `id` | `uuid` | yes | Primary key. |
 | `user_a_id` | `uuid` | yes | One side of the pair. |
 | `user_b_id` | `uuid` | yes | Other side of the pair. |
-| `status` | `varchar(16)` | yes | Currently `active`; future values may include `ended`. |
+| `status` | `varchar(16)` | yes | `active` or `ended`. Only `active` relationships are visible to product APIs. |
 | `created_at` | `timestamptz` | yes | Server timestamp. |
 
 Indexes and constraints:
@@ -198,6 +201,9 @@ Important invariant:
 
 - The API currently checks that a user has no existing active couple before
   creating a new pair.
+- If the same two users re-pair after ending the relationship, the existing
+  `couples` row is reactivated to satisfy `uq_couple_pair` and preserve the
+  shared history under the same `couple_id`.
 - The database does not yet enforce "only one active couple per user" with a
   partial unique index. Add one if this becomes a public multi-user system.
 
@@ -576,6 +582,19 @@ Realtime events are not persisted in the database.
       "phone_number": "+8613900000000",
       "display_name": "Bob"
     }
+  }
+}
+```
+
+`pairing.ended`:
+
+```json
+{
+  "type": "pairing.ended",
+  "ended_by_user_id": "uuid",
+  "pairing": {
+    "paired": false,
+    "partner": null
   }
 }
 ```

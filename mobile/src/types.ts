@@ -148,6 +148,12 @@ export type PairingRequestResolvedEvent = {
   pairing: PairingStatus | null;
 };
 
+export type PairingEndedEvent = {
+  type: "pairing.ended";
+  ended_by_user_id: string;
+  pairing: PairingStatus;
+};
+
 export type RealtimeEvent =
   | LocationEvent
   | SharingEvent
@@ -156,4 +162,5 @@ export type RealtimeEvent =
   | MemoryPointChangedEvent
   | BatteryLowEvent
   | PairingRequestCreatedEvent
-  | PairingRequestResolvedEvent;
+  | PairingRequestResolvedEvent
+  | PairingEndedEvent;

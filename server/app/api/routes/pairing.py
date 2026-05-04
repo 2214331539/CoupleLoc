@@ -59,6 +59,35 @@ def pairing_event(event_type: str, request: PairingRequestOut, pairing: PairingS
     }
 
 
+def pairing_ended_event(ended_by_user_id: UUID) -> dict:
+    return {
+        "type": "pairing.ended",
+        "ended_by_user_id": str(ended_by_user_id),
+        "pairing": PairingStatusOut(paired=False).model_dump(mode="json"),
+    }
+
+
+async def activate_couple(session: AsyncSession, user_a_id: UUID, user_b_id: UUID) -> Couple:
+    sorted_user_a_id, sorted_user_b_id = sorted([user_a_id, user_b_id], key=str)
+    result = await session.execute(
+        select(Couple).where(
+            Couple.user_a_id == sorted_user_a_id,
+            Couple.user_b_id == sorted_user_b_id,
+        )
+    )
+    couple = result.scalar_one_or_none()
+    if couple is None:
+        couple = Couple(
+            user_a_id=sorted_user_a_id,
+            user_b_id=sorted_user_b_id,
+            status="active",
+        )
+        session.add(couple)
+    else:
+        couple.status = "active"
+    return couple
+
+
 @router.post("/invites", response_model=PairingInviteOut, status_code=status.HTTP_201_CREATED)
 async def create_invite(
     current_user: User = Depends(get_current_user),
@@ -203,12 +232,14 @@ async def approve_pairing_request(
     if invite is None or invite.consumed_at is not None or invite.expires_at <= now:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invite is invalid or expired")
 
-    user_a_id, user_b_id = sorted([pairing_request.creator_user_id, pairing_request.requester_user_id], key=str)
-    couple = Couple(user_a_id=user_a_id, user_b_id=user_b_id, status="active")
     invite.consumed_at = now
     pairing_request.status = "approved"
     pairing_request.responded_at = now
-    session.add(couple)
+    await activate_couple(
+        session,
+        pairing_request.creator_user_id,
+        pairing_request.requester_user_id,
+    )
 
     other_pending_result = await session.execute(
         select(PairingRequest).where(
@@ -306,10 +337,8 @@ async def accept_invite(
             detail="Invite creator is already paired",
         )
 
-    user_a_id, user_b_id = sorted([invite.creator_user_id, current_user.id], key=str)
-    couple = Couple(user_a_id=user_a_id, user_b_id=user_b_id, status="active")
     invite.consumed_at = now
-    session.add(couple)
+    await activate_couple(session, invite.creator_user_id, current_user.id)
     await session.commit()
 
     partner = await session.get(User, invite.creator_user_id)
@@ -317,6 +346,25 @@ async def accept_invite(
         paired=True,
         partner=user_to_partner(partner),
     )
+
+
+@router.delete("/me", response_model=PairingStatusOut)
+async def end_pairing(
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+):
+    couple = await get_active_couple(session, current_user.id)
+    if couple is None:
+        return PairingStatusOut(paired=False)
+
+    partner_id = couple.user_b_id if couple.user_a_id == current_user.id else couple.user_a_id
+    couple.status = "ended"
+    await session.commit()
+
+    event = pairing_ended_event(current_user.id)
+    await connection_manager.send_to_user(current_user.id, event)
+    await connection_manager.send_to_user(partner_id, event)
+    return PairingStatusOut(paired=False)
 
 
 @router.get("/me", response_model=PairingStatusOut)
