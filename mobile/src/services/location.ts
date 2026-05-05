@@ -78,14 +78,23 @@ TaskManager.defineTask(BACKGROUND_LOCATION_TASK, async ({ data, error }) => {
   }
 });
 
-export async function requestLocationPermissions() {
+export async function requestForegroundLocationPermission() {
   const foreground = await Location.requestForegroundPermissionsAsync();
-  if (foreground.status !== Location.PermissionStatus.GRANTED) {
-    return false;
-  }
+  return foreground.status === Location.PermissionStatus.GRANTED;
+}
 
+export async function requestBackgroundLocationPermission() {
   const background = await Location.requestBackgroundPermissionsAsync();
   return background.status === Location.PermissionStatus.GRANTED;
+}
+
+export async function requestLocationPermissions(requireBackground = true) {
+  const foregroundGranted = await requestForegroundLocationPermission();
+  if (!foregroundGranted || !requireBackground) {
+    return foregroundGranted;
+  }
+
+  return requestBackgroundLocationPermission();
 }
 
 export async function getPermissionSnapshot(): Promise<PermissionSnapshot> {
@@ -119,7 +128,7 @@ export async function startBackgroundLocation() {
     foregroundService: {
       notificationTitle: "CoupleLoc location sharing",
       notificationBody: "Sharing your location with your partner in the background",
-      killServiceOnDestroy: true
+      killServiceOnDestroy: false
     },
     pausesUpdatesAutomatically: false
   });
@@ -149,6 +158,15 @@ export async function startForegroundLocation(
   onUploaded: (location: LocationSnapshot) => void,
   onError: (message: string) => void
 ) {
+  try {
+    const current = await Location.getCurrentPositionAsync({
+      accuracy: Location.Accuracy.High
+    });
+    onUploaded(await uploadLocation(current, "foreground"));
+  } catch (err) {
+    onError(err instanceof Error ? err.message : "Current location upload failed");
+  }
+
   return Location.watchPositionAsync(
     {
       accuracy: Location.Accuracy.High,

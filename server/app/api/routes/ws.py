@@ -27,5 +27,8 @@ async def locations_websocket(
         while True:
             await websocket.receive_text()
     except WebSocketDisconnect:
+        pass
+    except Exception:
+        pass
+    finally:
         connection_manager.disconnect(user.id, websocket)
-

@@ -72,10 +72,19 @@ def location_to_out(
     return output
 
 
-def location_to_event(location: LatestLocation, settings: SharingSettings) -> dict:
+def location_to_event(
+    location: LatestLocation,
+    settings: SharingSettings | None = None,
+    *,
+    viewer_is_owner: bool = False,
+) -> dict:
     return {
         "type": "location.updated",
-        "location": location_to_out(location, settings).model_dump(mode="json"),
+        "location": location_to_out(
+            location,
+            settings,
+            viewer_is_owner=viewer_is_owner,
+        ).model_dump(mode="json"),
     }
 
 
@@ -87,10 +96,10 @@ def sharing_to_event(user_id, settings: SharingSettings) -> dict:
     }
 
 
-def low_battery_to_event(location: LatestLocation) -> dict:
+def low_battery_to_event(location: LatestLocation, settings: SharingSettings) -> dict:
     return {
         "type": "battery.low",
-        "location": LocationOut.model_validate(location).model_dump(mode="json"),
+        "location": location_to_out(location, settings).model_dump(mode="json"),
     }
 
 
@@ -236,16 +245,22 @@ async def update_my_location(
     await session.commit()
     await session.refresh(location)
 
+    await connection_manager.send_to_user(
+        current_user.id,
+        location_to_event(location, settings, viewer_is_owner=True),
+    )
+
     partner_id = await get_partner_id(session, current_user.id)
     if partner_id is not None:
         await connection_manager.send_to_user(partner_id, location_to_event(location, settings))
         threshold = get_settings().low_battery_threshold
         if (
-            location.battery_level is not None
+            settings.share_battery
+            and location.battery_level is not None
             and location.battery_level <= threshold
             and (previous_battery_level is None or previous_battery_level > threshold)
         ):
-            await connection_manager.send_to_user(partner_id, low_battery_to_event(location))
+            await connection_manager.send_to_user(partner_id, low_battery_to_event(location, settings))
 
     return location
 

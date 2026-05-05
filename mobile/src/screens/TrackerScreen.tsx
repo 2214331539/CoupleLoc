@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Animated, StyleSheet, Switch, Text, View } from "react-native";
 import { MapView, Marker } from "react-native-amap3d";
 
@@ -20,7 +20,8 @@ import {
 import { SafeScreen } from "../components/SafeScreen";
 import {
   getPermissionSnapshot,
-  requestLocationPermissions,
+  requestBackgroundLocationPermission,
+  requestForegroundLocationPermission,
   startBackgroundLocation,
   startForegroundLocation,
   stopBackgroundLocation,
@@ -267,82 +268,145 @@ export function TrackerScreen({
     }
   }, [amapReady, cameraPosition]);
 
-  useEffect(() => {
-    if (suspended) {
-      return;
-    }
-
-    async function loadLocationState() {
+  const loadLocationState = useCallback(
+    async (quiet = false) => {
       try {
-        const [state, points] = await Promise.all([fetchLocationState(), listMemoryPoints()]);
+        const state = await fetchLocationState();
+        const points = pairing.paired ? await listMemoryPoints() : [];
         onSharingChanged(state.my_sharing);
         setPartnerSharing(state.partner_sharing);
         setMyLocation(state.my_latest);
         setPartnerLocation(state.partner_latest);
         setMemoryPoints(points);
-        setStatus("位置状态已同步");
+        if (!quiet) {
+          setStatus("位置状态已同步");
+        }
       } catch (err) {
         setStatus(err instanceof Error ? err.message : "位置状态加载失败");
       }
+    },
+    [onSharingChanged, pairing.paired]
+  );
+
+  useEffect(() => {
+    if (suspended) {
+      return;
     }
 
     loadLocationState();
-  }, [onSharingChanged, suspended]);
+  }, [loadLocationState, suspended]);
+
+  useEffect(() => {
+    if (suspended || !pairing.paired) {
+      return;
+    }
+
+    const timer = setInterval(() => {
+      loadLocationState(true);
+    }, 30_000);
+    return () => clearInterval(timer);
+  }, [loadLocationState, pairing.paired, suspended]);
 
   useEffect(() => {
     if (suspended) {
       setSocketState("closed");
-      return;
+      return undefined;
     }
 
-    const socket = new WebSocket(buildLocationWebSocketUrl(token));
-    setSocketState("connecting");
+    let socket: WebSocket | null = null;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let closed = false;
+    let reconnectDelay = 2_000;
 
-    socket.onopen = () => setSocketState("open");
-    socket.onclose = () => setSocketState("closed");
-    socket.onerror = () => setSocketState("closed");
-    socket.onmessage = (event) => {
-      try {
-        const payload = JSON.parse(event.data) as RealtimeEvent;
-        if (payload.type === "location.updated") {
-          setPartnerLocation(payload.location);
-          setStatus("对方刚刚更新了位置");
-          return;
-        }
-
-        if (payload.type === "sharing.updated" && payload.user_id === partner?.id) {
-          setPartnerSharing(payload.settings);
-          if (!payload.settings.enabled) {
-            setPartnerLocation(null);
-            setStatus("对方暂停了位置共享");
-          } else {
-            setStatus("对方恢复了位置共享");
-          }
-        }
-        if (payload.type === "memory.point_changed") {
-          listMemoryPoints()
-            .then(setMemoryPoints)
-            .catch(() => setStatus("记忆点刷新失败"));
-        }
-        if (payload.type === "battery.low" && payload.location.user_id === partner?.id) {
-          setStatus("对方电量偏低");
-        }
-      } catch {
-        setStatus("收到了一条无法识别的实时消息");
+    const scheduleReconnect = () => {
+      if (closed || reconnectTimer) {
+        return;
       }
+      reconnectTimer = setTimeout(() => {
+        reconnectTimer = null;
+        connect();
+      }, reconnectDelay);
+      reconnectDelay = Math.min(10_000, Math.round(reconnectDelay * 1.5));
     };
 
+    const connect = () => {
+      if (closed) {
+        return;
+      }
+
+      const nextSocket = new WebSocket(buildLocationWebSocketUrl(token));
+      socket = nextSocket;
+      setSocketState("connecting");
+
+      nextSocket.onopen = () => {
+        reconnectDelay = 2_000;
+        setSocketState("open");
+        loadLocationState(true);
+      };
+      nextSocket.onclose = () => {
+        if (!closed) {
+          setSocketState("closed");
+          scheduleReconnect();
+        }
+      };
+      nextSocket.onerror = () => {
+        setSocketState("closed");
+      };
+      nextSocket.onmessage = (event) => {
+        try {
+          const payload = JSON.parse(event.data) as RealtimeEvent;
+          if (payload.type === "location.updated") {
+            if (payload.location.user_id === user.id) {
+              setMyLocation(payload.location);
+              setStatus("我的位置已同步");
+            } else if (payload.location.user_id === partner?.id) {
+              setPartnerLocation(payload.location);
+              setStatus("对方刚刚更新了位置");
+            }
+            return;
+          }
+
+          if (payload.type === "sharing.updated" && payload.user_id === partner?.id) {
+            setPartnerSharing(payload.settings);
+            if (!payload.settings.enabled) {
+              setPartnerLocation(null);
+              setStatus("对方暂停了位置共享");
+            } else {
+              setStatus("对方恢复了位置共享");
+              loadLocationState(true);
+            }
+          }
+          if (payload.type === "memory.point_changed" && pairing.paired) {
+            listMemoryPoints()
+              .then(setMemoryPoints)
+              .catch(() => setStatus("记忆点刷新失败"));
+          }
+          if (payload.type === "battery.low" && payload.location.user_id === partner?.id) {
+            setStatus("对方电量偏低");
+          }
+        } catch {
+          setStatus("收到了一条无法识别的实时消息");
+        }
+      };
+    };
+
+    connect();
+
     const keepAlive = setInterval(() => {
-      if (socket.readyState === WebSocket.OPEN) {
+      if (socket?.readyState === WebSocket.OPEN) {
         socket.send("ping");
       }
     }, 25_000);
 
     return () => {
+      closed = true;
       clearInterval(keepAlive);
-      socket.close();
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+      }
+      socket?.close();
     };
-  }, [partner?.id, suspended, token]);
+  }, [loadLocationState, pairing.paired, partner?.id, suspended, token, user.id]);
 
   useEffect(() => {
     let subscription: { remove: () => void } | null = null;
@@ -363,9 +427,9 @@ export function TrackerScreen({
       }
 
       setStatus("正在请求定位权限");
-      const granted = await requestLocationPermissions();
-      if (!granted) {
-        setStatus("需要前台和后台定位权限");
+      const foregroundGranted = await requestForegroundLocationPermission();
+      if (!foregroundGranted) {
+        setStatus("需要前台定位权限");
         setPermission(await getPermissionSnapshot());
         return;
       }
@@ -373,7 +437,16 @@ export function TrackerScreen({
       if (sharing.mode === "foreground") {
         await stopBackgroundLocation().catch(() => undefined);
       } else {
-        await startBackgroundLocation();
+        const backgroundGranted = await requestBackgroundLocationPermission();
+        if (backgroundGranted) {
+          try {
+            await startBackgroundLocation();
+          } catch (err) {
+            setStatus(err instanceof Error ? `后台定位启动失败：${err.message}` : "后台定位启动失败");
+          }
+        } else {
+          setStatus("后台定位未授权，前台打开时仍会同步");
+        }
       }
       if (cancelled) {
         return;

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   FlatList,
   KeyboardAvoidingView,
@@ -31,6 +31,14 @@ const quickStatuses = [
   { key: "arrived_safe", label: "平安到达", tone: "mint" as const },
 ];
 
+function mergeMessages(current: ChatMessage[], incoming: ChatMessage[]) {
+  const byId = new Map(current.map((message) => [message.id, message]));
+  for (const message of incoming) {
+    byId.set(message.id, message);
+  }
+  return [...byId.values()].sort((a, b) => +new Date(a.created_at) - +new Date(b.created_at));
+}
+
 export function ChatScreen({ user, partner, token, active }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [text, setText] = useState("");
@@ -46,66 +54,151 @@ export function ChatScreen({ user, partner, token, active }: Props) {
     activeRef.current = active;
   }, [active]);
 
-  useEffect(() => {
-    listChatMessages()
-      .then((items) => {
-        setMessages(items);
-        initialPositionedRef.current = items.length === 0;
-        setListReady(items.length === 0);
-        if (items.length) {
-          setTimeout(() => {
-            if (!initialPositionedRef.current) {
-              initialPositionedRef.current = true;
-              listRef.current?.scrollToEnd({ animated: false });
-              setListReady(true);
-            }
-          }, 250);
+  const positionInitialList = useCallback((itemCount: number) => {
+    if (initialPositionedRef.current) {
+      return;
+    }
+
+    initialPositionedRef.current = itemCount === 0;
+    setListReady(itemCount === 0);
+    if (itemCount) {
+      setTimeout(() => {
+        if (!initialPositionedRef.current) {
+          initialPositionedRef.current = true;
+          listRef.current?.scrollToEnd({ animated: false });
+          setListReady(true);
         }
-        setStatus("在线");
-      })
-      .catch((err) => {
-        setListReady(true);
-        setStatus(err instanceof Error ? err.message : "消息加载失败");
-      });
+      }, 250);
+    }
   }, []);
 
-  useEffect(() => {
-    const socket = new WebSocket(buildLocationWebSocketUrl(token));
-
-    socket.onmessage = (event) => {
-      try {
-        const payload = JSON.parse(event.data) as RealtimeEvent;
-        if (payload.type === "chat.message_created") {
-          setMessages((items) => {
-            if (items.some((item) => item.id === payload.message.id)) {
-              return items;
-            }
-            if (activeRef.current && nearBottomRef.current) {
-              pendingScrollToEndRef.current = true;
-            }
-            return [...items, payload.message];
-          });
-          setStatus("刚收到新消息");
-        }
-        if (payload.type === "battery.low") {
-          setStatus("对方电量偏低");
-        }
-      } catch {
-        setStatus("收到一条无法识别的实时消息");
+  const reloadMessages = useCallback(
+    async (quiet = false) => {
+      if (!partner) {
+        setMessages([]);
+        initialPositionedRef.current = true;
+        setListReady(true);
+        setStatus("请先完成配对");
+        return;
       }
+
+      try {
+        const items = await listChatMessages();
+        setMessages((current) => mergeMessages(current, items));
+        positionInitialList(items.length);
+        if (!quiet) {
+          setStatus("在线");
+        }
+      } catch (err) {
+        setListReady(true);
+        setStatus(err instanceof Error ? err.message : "消息加载失败");
+      }
+    },
+    [partner, positionInitialList]
+  );
+
+  useEffect(() => {
+    initialPositionedRef.current = false;
+    setListReady(false);
+    setMessages([]);
+    reloadMessages();
+  }, [reloadMessages]);
+
+  useEffect(() => {
+    if (active && partner) {
+      reloadMessages(true);
+      const timer = setInterval(() => {
+        reloadMessages(true);
+      }, 15_000);
+      return () => clearInterval(timer);
+    }
+    return undefined;
+  }, [active, partner, reloadMessages]);
+
+  useEffect(() => {
+    if (!partner) {
+      return undefined;
+    }
+
+    let socket: WebSocket | null = null;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let closed = false;
+    let reconnectDelay = 2_000;
+
+    const scheduleReconnect = () => {
+      if (closed || reconnectTimer) {
+        return;
+      }
+      reconnectTimer = setTimeout(() => {
+        reconnectTimer = null;
+        connect();
+      }, reconnectDelay);
+      reconnectDelay = Math.min(10_000, Math.round(reconnectDelay * 1.5));
     };
 
+    const connect = () => {
+      if (closed) {
+        return;
+      }
+
+      socket = new WebSocket(buildLocationWebSocketUrl(token));
+      setStatus((value) => (value === "在线" ? "正在连接实时消息" : value));
+
+      socket.onopen = () => {
+        reconnectDelay = 2_000;
+        setStatus("实时在线");
+        reloadMessages(true);
+      };
+
+      socket.onmessage = (event) => {
+        try {
+          const payload = JSON.parse(event.data) as RealtimeEvent;
+          if (payload.type === "chat.message_created") {
+            setMessages((items) => {
+              if (activeRef.current && nearBottomRef.current) {
+                pendingScrollToEndRef.current = true;
+              }
+              return mergeMessages(items, [payload.message]);
+            });
+            setStatus(payload.message.sender_user_id === user.id ? "消息已同步" : "刚收到新消息");
+          }
+          if (payload.type === "battery.low") {
+            setStatus("对方电量偏低");
+          }
+        } catch {
+          setStatus("收到一条无法识别的实时消息");
+        }
+      };
+
+      socket.onclose = () => {
+        if (!closed) {
+          setStatus("实时连接已断开，正在重连");
+          reloadMessages(true);
+          scheduleReconnect();
+        }
+      };
+      socket.onerror = () => {
+        setStatus("实时连接异常，正在重连");
+      };
+    };
+
+    connect();
+
     const keepAlive = setInterval(() => {
-      if (socket.readyState === WebSocket.OPEN) {
+      if (socket?.readyState === WebSocket.OPEN) {
         socket.send("ping");
       }
     }, 25_000);
 
     return () => {
+      closed = true;
       clearInterval(keepAlive);
-      socket.close();
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+      }
+      socket?.close();
     };
-  }, [token]);
+  }, [partner, reloadMessages, token, user.id]);
 
   const orderedMessages = useMemo(
     () => [...messages].sort((a, b) => +new Date(a.created_at) - +new Date(b.created_at)),
@@ -148,7 +241,7 @@ export function ChatScreen({ user, partner, token, active }: Props) {
         status_key: statusKey ?? null
       });
       pendingScrollToEndRef.current = true;
-      setMessages((items) => [...items, message]);
+      setMessages((items) => mergeMessages(items, [message]));
       setStatus("已发送");
     } catch (err) {
       setStatus(err instanceof Error ? err.message : "发送失败");

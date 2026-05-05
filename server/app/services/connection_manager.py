@@ -1,4 +1,5 @@
 from collections import defaultdict
+from collections.abc import Iterable
 from uuid import UUID
 
 from fastapi import WebSocket
@@ -23,7 +24,7 @@ class ConnectionManager:
 
     async def send_to_user(self, user_id: UUID, payload: dict) -> None:
         stale_connections: list[WebSocket] = []
-        for websocket in self._connections.get(user_id, []):
+        for websocket in list(self._connections.get(user_id, [])):
             try:
                 await websocket.send_json(payload)
             except Exception:
@@ -31,6 +32,10 @@ class ConnectionManager:
 
         for websocket in stale_connections:
             self.disconnect(user_id, websocket)
+
+    async def send_to_users(self, user_ids: Iterable[UUID], payload: dict) -> None:
+        for user_id in set(user_ids):
+            await self.send_to_user(user_id, payload)
 
 
 connection_manager = ConnectionManager()

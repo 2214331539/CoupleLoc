@@ -281,8 +281,8 @@ export function buildLocationWebSocketUrl(token: string) {
   return `${env.wsBaseUrl}/ws/locations?token=${encodeURIComponent(token)}`;
 }
 
-export function listChatMessages() {
-  return request<ChatMessage[]>("/chat/messages");
+export function listChatMessages(limit = 100) {
+  return request<ChatMessage[]>(`/chat/messages?limit=${limit}`);
 }
 
 export function sendChatMessage(payload: {

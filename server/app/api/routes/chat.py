@@ -54,7 +54,17 @@ async def create_message(
     session: AsyncSession = Depends(get_db_session),
 ):
     body = payload.body.strip()
-    status_key = payload.status_key.strip() if payload.status_key else None
+    if not body:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Message body cannot be empty",
+        )
+
+    status_key = (
+        payload.status_key.strip()
+        if payload.message_type == "quick_status" and payload.status_key
+        else None
+    )
     if payload.message_type == "quick_status" and not status_key:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -73,8 +83,8 @@ async def create_message(
     await session.commit()
     await session.refresh(message)
 
-    await connection_manager.send_to_user(
-        get_partner_id(couple, current_user.id),
+    await connection_manager.send_to_users(
+        [current_user.id, get_partner_id(couple, current_user.id)],
         chat_message_to_event(message),
     )
     return message
