@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   FlatList,
+  Keyboard,
   KeyboardAvoidingView,
   NativeScrollEvent,
   NativeSyntheticEvent,
@@ -26,9 +27,48 @@ type Props = {
 };
 
 const quickStatuses = [
-  { key: "miss_you", label: "想你了", tone: "ghost" as const },
-  { key: "on_the_way", label: "在路上", tone: "secondary" as const },
-  { key: "arrived_safe", label: "平安到达", tone: "mint" as const },
+  { key: "miss_you", label: "想你了！！！", tone: "ghost" as const },
+  { key: "on_the_way", label: "在路上~", tone: "secondary" as const },
+  { key: "arrived_safe", label: "平安到达！", tone: "mint" as const },
+];
+
+const emojiPalette = [
+  "😀",
+  "😁",
+  "😂",
+  "🤣",
+  "😊",
+  "😍",
+  "😘",
+  "🥰",
+  "😎",
+  "😋",
+  "😭",
+  "🥺",
+  "😡",
+  "😴",
+  "🤔",
+  "🤭",
+  "👍",
+  "👏",
+  "🙏",
+  "💪",
+  "❤️",
+  "💕",
+  "💖",
+  "💘",
+  "🌹",
+  "🎉",
+  "✨",
+  "🔥",
+  "☀️",
+  "🌙",
+  "⭐",
+  "🍰",
+  "🍓",
+  "☕",
+  "🍜",
+  "🎁",
 ];
 
 function mergeMessages(current: ChatMessage[], incoming: ChatMessage[]) {
@@ -44,7 +84,10 @@ export function ChatScreen({ user, partner, token, active }: Props) {
   const [text, setText] = useState("");
   const [status, setStatus] = useState("正在连接");
   const [listReady, setListReady] = useState(false);
+  const [emojiOpen, setEmojiOpen] = useState(false);
+  const [composerFocused, setComposerFocused] = useState(false);
   const listRef = useRef<FlatList<ChatMessage>>(null);
+  const inputRef = useRef<TextInput>(null);
   const activeRef = useRef(active);
   const initialPositionedRef = useRef(false);
   const nearBottomRef = useRef(true);
@@ -53,6 +96,38 @@ export function ChatScreen({ user, partner, token, active }: Props) {
   useEffect(() => {
     activeRef.current = active;
   }, [active]);
+
+  const scrollToLatest = useCallback((animated = true) => {
+    requestAnimationFrame(() => {
+      listRef.current?.scrollToEnd({ animated });
+    });
+  }, []);
+
+  const queueScrollToLatest = useCallback(
+    (animated = true) => {
+      pendingScrollToEndRef.current = true;
+      setTimeout(() => scrollToLatest(animated), 80);
+    },
+    [scrollToLatest]
+  );
+
+  useEffect(() => {
+    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const showSub = Keyboard.addListener(showEvent, () => {
+      setEmojiOpen(false);
+      setComposerFocused(true);
+      queueScrollToLatest(true);
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setComposerFocused(false);
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, [queueScrollToLatest]);
 
   const positionInitialList = useCallback((itemCount: number) => {
     if (initialPositionedRef.current) {
@@ -65,12 +140,12 @@ export function ChatScreen({ user, partner, token, active }: Props) {
       setTimeout(() => {
         if (!initialPositionedRef.current) {
           initialPositionedRef.current = true;
-          listRef.current?.scrollToEnd({ animated: false });
+          scrollToLatest(false);
           setListReady(true);
         }
       }, 250);
     }
-  }, []);
+  }, [scrollToLatest]);
 
   const reloadMessages = useCallback(
     async (quiet = false) => {
@@ -156,7 +231,7 @@ export function ChatScreen({ user, partner, token, active }: Props) {
           if (payload.type === "chat.message_created") {
             setMessages((items) => {
               if (activeRef.current && nearBottomRef.current) {
-                pendingScrollToEndRef.current = true;
+                queueScrollToLatest(true);
               }
               return mergeMessages(items, [payload.message]);
             });
@@ -198,7 +273,7 @@ export function ChatScreen({ user, partner, token, active }: Props) {
       }
       socket?.close();
     };
-  }, [partner, reloadMessages, token, user.id]);
+  }, [partner, queueScrollToLatest, reloadMessages, token, user.id]);
 
   const orderedMessages = useMemo(
     () => [...messages].sort((a, b) => +new Date(a.created_at) - +new Date(b.created_at)),
@@ -209,7 +284,7 @@ export function ChatScreen({ user, partner, token, active }: Props) {
     if (!initialPositionedRef.current && orderedMessages.length) {
       initialPositionedRef.current = true;
       requestAnimationFrame(() => {
-        listRef.current?.scrollToEnd({ animated: false });
+        scrollToLatest(false);
         setListReady(true);
       });
       return;
@@ -217,9 +292,7 @@ export function ChatScreen({ user, partner, token, active }: Props) {
 
     if (pendingScrollToEndRef.current) {
       pendingScrollToEndRef.current = false;
-      requestAnimationFrame(() => {
-        listRef.current?.scrollToEnd({ animated: activeRef.current });
-      });
+      scrollToLatest(activeRef.current);
     }
   };
 
@@ -234,13 +307,14 @@ export function ChatScreen({ user, partner, token, active }: Props) {
       return;
     }
     setText("");
+    setEmojiOpen(false);
     try {
       const message = await sendChatMessage({
         message_type: statusKey ? "quick_status" : "text",
         body,
         status_key: statusKey ?? null
       });
-      pendingScrollToEndRef.current = true;
+      queueScrollToLatest(true);
       setMessages((items) => mergeMessages(items, [message]));
       setStatus("已发送");
     } catch (err) {
@@ -249,6 +323,23 @@ export function ChatScreen({ user, partner, token, active }: Props) {
         setText(body);
       }
     }
+  };
+
+  const toggleEmoji = () => {
+    if (emojiOpen) {
+      setEmojiOpen(false);
+      inputRef.current?.focus();
+      return;
+    }
+
+    Keyboard.dismiss();
+    setEmojiOpen(true);
+    queueScrollToLatest(true);
+  };
+
+  const insertEmoji = (emoji: string) => {
+    setText((value) => `${value}${emoji}`);
+    queueScrollToLatest(false);
   };
 
   return (
@@ -283,7 +374,7 @@ export function ChatScreen({ user, partner, token, active }: Props) {
           style={!listReady && styles.messageListHidden}
         />
 
-        <View style={styles.composerWrap}>
+        <View style={[styles.composerWrap, (composerFocused || emojiOpen) && styles.composerActive]}>
           <View style={styles.quickRow}>
             {quickStatuses.map((item) => (
               <PillButton
@@ -297,8 +388,26 @@ export function ChatScreen({ user, partner, token, active }: Props) {
           </View>
 
           <View style={styles.composer}>
+            <Pressable
+              accessibilityLabel="打开表情"
+              onPress={toggleEmoji}
+              style={[styles.toolButton, emojiOpen && styles.toolButtonActive]}
+            >
+              <Text style={[styles.toolButtonText, emojiOpen && styles.toolButtonTextActive]}>
+                ☺
+              </Text>
+            </Pressable>
             <TextInput
+              ref={inputRef}
+              multiline
+              maxLength={500}
               onChangeText={setText}
+              onFocus={() => {
+                setEmojiOpen(false);
+                setComposerFocused(true);
+                queueScrollToLatest(true);
+              }}
+              onBlur={() => setComposerFocused(false)}
               placeholder={`给${partner?.display_name ?? "对方"}留言...`}
               placeholderTextColor={colors.tertiaryText}
               style={styles.input}
@@ -308,6 +417,16 @@ export function ChatScreen({ user, partner, token, active }: Props) {
               <Text style={styles.sendText}>↑</Text>
             </Pressable>
           </View>
+
+          {emojiOpen ? (
+            <View style={styles.emojiPanel}>
+              {emojiPalette.map((emoji) => (
+                <Pressable key={emoji} onPress={() => insertEmoji(emoji)} style={styles.emojiButton}>
+                  <Text style={styles.emojiText}>{emoji}</Text>
+                </Pressable>
+              ))}
+            </View>
+          ) : null}
         </View>
       </KeyboardAvoidingView>
     </SafeScreen>
@@ -344,6 +463,8 @@ const styles = StyleSheet.create({
     fontWeight: "700"
   },
   messageList: {
+    flexGrow: 1,
+    justifyContent: "flex-end",
     padding: spacing.md,
     gap: spacing.md,
     paddingBottom: spacing.xl
@@ -404,6 +525,9 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     gap: spacing.md
   },
+  composerActive: {
+    backgroundColor: colors.background
+  },
   quickRow: {
     flexDirection: "row",
     gap: spacing.sm
@@ -416,18 +540,38 @@ const styles = StyleSheet.create({
   },
   composer: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-end",
     gap: spacing.sm
+  },
+  toolButton: {
+    width: 44,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 22,
+    backgroundColor: colors.surface
+  },
+  toolButtonActive: {
+    backgroundColor: colors.primarySoft
+  },
+  toolButtonText: {
+    color: colors.textSoft,
+    fontSize: 24,
+    fontWeight: "700"
+  },
+  toolButtonTextActive: {
+    color: colors.primary
   },
   input: {
     flex: 1,
-    height: 44,
-    borderRadius: radius.full,
+    minHeight: 44,
+    maxHeight: 104,
+    borderRadius: 22,
     backgroundColor: colors.surface,
     color: colors.text,
     fontSize: 16,
     paddingHorizontal: spacing.md,
-    paddingVertical: 0,
+    paddingVertical: Platform.OS === "ios" ? 11 : 7,
     includeFontPadding: false,
     textAlignVertical: "center"
   },
@@ -443,5 +587,25 @@ const styles = StyleSheet.create({
     color: colors.surface,
     fontSize: 24,
     fontWeight: "800"
+  },
+  emojiPanel: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.line,
+    paddingTop: spacing.sm,
+    gap: spacing.sm,
+    justifyContent: "space-between"
+  },
+  emojiButton: {
+    width: "14.5%",
+    height: 42,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.md,
+    backgroundColor: colors.surface
+  },
+  emojiText: {
+    fontSize: 24
   }
 });
