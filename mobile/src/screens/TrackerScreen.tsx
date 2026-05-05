@@ -20,11 +20,10 @@ import {
 import { SafeScreen } from "../components/SafeScreen";
 import {
   getPermissionSnapshot,
-  requestBackgroundLocationPermission,
   requestForegroundLocationPermission,
-  startBackgroundLocation,
-  startForegroundLocation,
   stopBackgroundLocation,
+  uploadDeviceLocation,
+  type DeviceLocation,
   type PermissionSnapshot,
 } from "../services/location";
 import { initializeAmap } from "../services/amap";
@@ -37,7 +36,7 @@ import type {
   SharingSettings,
   User,
 } from "../types";
-import { wgs84ToGcj02, type LatLng } from "../utils/coordinates";
+import { gcj02ToWgs84, wgs84ToGcj02, type LatLng } from "../utils/coordinates";
 
 type Props = {
   user: User;
@@ -92,7 +91,7 @@ function buildCameraPosition(
   };
 }
 
-function distanceKm(a: LocationSnapshot | null, b: LocationSnapshot | null) {
+function distanceBetweenCoordinatesKm(a: LatLng | null, b: LatLng | null) {
   if (!a || !b) {
     return null;
   }
@@ -106,6 +105,10 @@ function distanceKm(a: LocationSnapshot | null, b: LocationSnapshot | null) {
     Math.sin(dLat / 2) ** 2 +
     Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
   return earthRadiusKm * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+}
+
+function distanceKm(a: LocationSnapshot | null, b: LocationSnapshot | null) {
+  return distanceBetweenCoordinatesKm(a, b);
 }
 
 function formatDistance(value: number) {
@@ -158,6 +161,8 @@ export function TrackerScreen({
   const mapRef = useRef<any>(null);
   const chromeRestoreTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const ignoreCameraMoveUntil = useRef(0);
+  const lastAmapUploadRef = useRef<{ latitude: number; longitude: number; uploadedAt: number } | null>(null);
+  const amapUploadInFlightRef = useRef(false);
   const chromeProgress = useRef(new Animated.Value(1)).current;
   const [myLocation, setMyLocation] = useState<LocationSnapshot | null>(null);
   const [partnerLocation, setPartnerLocation] = useState<LocationSnapshot | null>(null);
@@ -235,6 +240,56 @@ export function TrackerScreen({
       return;
     }
     collapseMapChrome(false);
+  };
+
+  const handleAmapLocation = async (event: { nativeEvent: DeviceLocation }) => {
+    if (suspended || !sharing.enabled || sharing.mode === "paused" || amapUploadInFlightRef.current) {
+      return;
+    }
+
+    const { coords } = event.nativeEvent;
+    if (!Number.isFinite(coords.latitude) || !Number.isFinite(coords.longitude)) {
+      return;
+    }
+
+    const previous = lastAmapUploadRef.current;
+    const now = Date.now();
+    const movedKm = previous
+      ? distanceBetweenCoordinatesKm(previous, coords)
+      : null;
+
+    if (previous && now - previous.uploadedAt < 7_000 && (movedKm ?? 0) < 0.01) {
+      return;
+    }
+
+    const wgs84Coords = gcj02ToWgs84({
+      latitude: coords.latitude,
+      longitude: coords.longitude
+    });
+    const location: DeviceLocation = {
+      ...event.nativeEvent,
+      timestamp: event.nativeEvent.timestamp ?? now,
+      coords: {
+        ...coords,
+        ...wgs84Coords
+      }
+    };
+
+    try {
+      amapUploadInFlightRef.current = true;
+      const uploaded = await uploadDeviceLocation(location, "foreground");
+      lastAmapUploadRef.current = {
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+        uploadedAt: now
+      };
+      setMyLocation(uploaded);
+      setStatus("高德定位已同步");
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : "高德定位上传失败");
+    } finally {
+      amapUploadInFlightRef.current = false;
+    }
   };
 
   useEffect(() => {
@@ -409,57 +464,46 @@ export function TrackerScreen({
   }, [loadLocationState, pairing.paired, partner?.id, suspended, token, user.id]);
 
   useEffect(() => {
-    let subscription: { remove: () => void } | null = null;
     let cancelled = false;
 
+    async function refreshPermissionSnapshot() {
+      const snapshot = await getPermissionSnapshot();
+      if (!cancelled) {
+        setPermission(snapshot);
+      }
+    }
+
     async function startTracking() {
+      await stopBackgroundLocation().catch(() => undefined);
+      if (cancelled) {
+        return;
+      }
+
       if (suspended) {
         setStatus("位置共享已暂停");
-        setPermission(await getPermissionSnapshot());
+        await refreshPermissionSnapshot();
         return;
       }
 
       if (!sharing.enabled || sharing.mode === "paused") {
-        await stopBackgroundLocation().catch(() => undefined);
         setStatus("位置共享已暂停");
-        setPermission(await getPermissionSnapshot());
+        await refreshPermissionSnapshot();
         return;
       }
 
       setStatus("正在请求定位权限");
       const foregroundGranted = await requestForegroundLocationPermission();
-      if (!foregroundGranted) {
-        setStatus("需要前台定位权限");
-        setPermission(await getPermissionSnapshot());
-        return;
-      }
-
-      if (sharing.mode === "foreground") {
-        await stopBackgroundLocation().catch(() => undefined);
-      } else {
-        const backgroundGranted = await requestBackgroundLocationPermission();
-        if (backgroundGranted) {
-          try {
-            await startBackgroundLocation();
-          } catch (err) {
-            setStatus(err instanceof Error ? `后台定位启动失败：${err.message}` : "后台定位启动失败");
-          }
-        } else {
-          setStatus("后台定位未授权，前台打开时仍会同步");
-        }
-      }
       if (cancelled) {
         return;
       }
 
-      subscription = await startForegroundLocation(
-        (location) => {
-          setMyLocation(location);
-          setStatus("我的位置已同步");
-        },
-        (message) => setStatus(message)
-      );
-      setPermission(await getPermissionSnapshot());
+      await refreshPermissionSnapshot();
+      if (!foregroundGranted) {
+        setStatus("需要前台定位权限");
+        return;
+      }
+
+      setStatus("高德地图前台定位中");
     }
 
     startTracking().catch((err) => {
@@ -468,7 +512,6 @@ export function TrackerScreen({
 
     return () => {
       cancelled = true;
-      subscription?.remove();
     };
   }, [sharing.enabled, sharing.mode, suspended]);
 
@@ -495,6 +538,12 @@ export function TrackerScreen({
   };
 
   const socketLabel = socketState === "open" ? "实时在线" : socketState === "connecting" ? "连接中" : "离线";
+  const amapLocationEnabled = !suspended && sharing.enabled && sharing.mode !== "paused";
+  const locationSourceLabel = !amapLocationEnabled
+    ? "已暂停"
+    : permission?.foreground === "granted" && permission.servicesEnabled
+      ? "高德前台"
+      : "待授权";
 
   return (
     <View style={styles.screen}>
@@ -503,8 +552,11 @@ export function TrackerScreen({
           ref={mapRef}
           style={styles.map}
           initialCameraPosition={cameraPosition}
+          myLocationButtonEnabled={amapLocationEnabled}
+          myLocationEnabled={amapLocationEnabled}
           onCameraIdle={handleMapGesture}
           onCameraMove={handleMapGesture}
+          onLocation={handleAmapLocation}
           onLoad={() => {
             markProgrammaticCameraMove();
             mapRef.current?.moveCamera(cameraPosition, 100);
@@ -620,9 +672,9 @@ export function TrackerScreen({
                 )}
               />
               <StatTile
-                label="后台定位"
-                tone={permission?.backgroundTaskStarted ? "mint" : "plain"}
-                value={permission?.backgroundTaskStarted ? "运行中" : "未运行"}
+                label="定位来源"
+                tone={locationSourceLabel === "高德前台" ? "mint" : "plain"}
+                value={locationSourceLabel}
               />
               <StatTile label="记忆点" value={`${memoryPoints.length} 个`} />
             </View>

@@ -54,3 +54,15 @@ export function wgs84ToGcj02(point: LatLng): LatLng {
   };
 }
 
+export function gcj02ToWgs84(point: LatLng): LatLng {
+  const { latitude, longitude } = point;
+  if (outOfChina(latitude, longitude)) {
+    return point;
+  }
+
+  const converted = wgs84ToGcj02(point);
+  return {
+    latitude: latitude * 2 - converted.latitude,
+    longitude: longitude * 2 - converted.longitude
+  };
+}
