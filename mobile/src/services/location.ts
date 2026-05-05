@@ -59,6 +59,21 @@ export async function uploadLocation(
   return postLocation(payload);
 }
 
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T | null> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(null), timeoutMs);
+    promise
+      .then((value) => {
+        clearTimeout(timer);
+        resolve(value);
+      })
+      .catch(() => {
+        clearTimeout(timer);
+        resolve(null);
+      });
+  });
+}
+
 TaskManager.defineTask(BACKGROUND_LOCATION_TASK, async ({ data, error }) => {
   if (error) {
     console.warn("Background location task failed", error.message);
@@ -158,16 +173,7 @@ export async function startForegroundLocation(
   onUploaded: (location: LocationSnapshot) => void,
   onError: (message: string) => void
 ) {
-  try {
-    const current = await Location.getCurrentPositionAsync({
-      accuracy: Location.Accuracy.High
-    });
-    onUploaded(await uploadLocation(current, "foreground"));
-  } catch (err) {
-    onError(err instanceof Error ? err.message : "Current location upload failed");
-  }
-
-  return Location.watchPositionAsync(
+  const subscription = await Location.watchPositionAsync(
     {
       accuracy: Location.Accuracy.High,
       timeInterval: 7_000,
@@ -182,4 +188,43 @@ export async function startForegroundLocation(
       }
     }
   );
+
+  void uploadInitialForegroundLocation(onUploaded, onError);
+  return subscription;
+}
+
+async function uploadInitialForegroundLocation(
+  onUploaded: (location: LocationSnapshot) => void,
+  onError: (message: string) => void
+) {
+  const lastKnown = await Location.getLastKnownPositionAsync({
+    maxAge: 120_000,
+    requiredAccuracy: 500
+  }).catch(() => null);
+
+  if (lastKnown) {
+    try {
+      onUploaded(await uploadLocation(lastKnown, "foreground"));
+    } catch {
+      // A fresh current-location attempt below can still succeed.
+    }
+  }
+
+  const current = await withTimeout(
+    Location.getCurrentPositionAsync({
+      accuracy: Location.Accuracy.Balanced
+    }),
+    12_000
+  );
+
+  if (!current) {
+    onError("当前定位超时，等待系统位置更新");
+    return;
+  }
+
+  try {
+    onUploaded(await uploadLocation(current, "foreground"));
+  } catch (err) {
+    onError(err instanceof Error ? err.message : "Current location upload failed");
+  }
 }

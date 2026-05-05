@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import * as SecureStore from "expo-secure-store";
 
-import { buildLocationWebSocketUrl } from "../api/client";
+import { buildLocationWebSocketUrl, listChatMessages } from "../api/client";
 import { CalendarScreen } from "./CalendarScreen";
 import { ChatScreen } from "./ChatScreen";
 import { ProfileScreen } from "./ProfileScreen";
@@ -29,13 +30,59 @@ const tabs: Array<{ key: TabKey; label: string; icon: string }> = [
   { key: "profile", label: "我的", icon: "◎" },
 ];
 
+function chatReadKey(userId: string, partnerId: string) {
+  return `coupleloc.chatLastRead.${userId}.${partnerId}`;
+}
+
+function formatUnreadCount(count: number) {
+  return count > 99 ? "99+" : String(count);
+}
+
 export function MainScreen(props: Props) {
   const [activeTab, setActiveTab] = useState<TabKey>(props.pairing.paired ? "map" : "profile");
   const [chatMounted, setChatMounted] = useState(activeTab === "chat");
+  const [unreadChatCount, setUnreadChatCount] = useState(0);
+
+  const markChatRead = useCallback(async () => {
+    const partnerId = props.pairing.partner?.id;
+    if (!partnerId) {
+      setUnreadChatCount(0);
+      return;
+    }
+
+    setUnreadChatCount(0);
+    await SecureStore.setItemAsync(
+      chatReadKey(props.user.id, partnerId),
+      new Date().toISOString()
+    );
+  }, [props.pairing.partner?.id, props.user.id]);
+
+  const refreshUnreadCount = useCallback(async () => {
+    const partnerId = props.pairing.partner?.id;
+    if (!partnerId || activeTab === "chat") {
+      setUnreadChatCount(0);
+      return;
+    }
+
+    try {
+      const lastReadAt = await SecureStore.getItemAsync(chatReadKey(props.user.id, partnerId));
+      const messages = await listChatMessages(100);
+      const nextUnread = messages.filter((message) => {
+        if (message.sender_user_id !== partnerId) {
+          return false;
+        }
+        return !lastReadAt || new Date(message.created_at) > new Date(lastReadAt);
+      }).length;
+      setUnreadChatCount(nextUnread);
+    } catch {
+      // Keep the current badge if the network is temporarily unavailable.
+    }
+  }, [activeTab, props.pairing.partner?.id, props.user.id]);
 
   const switchTab = (tab: TabKey) => {
     if (tab === "chat") {
       setChatMounted(true);
+      void markChatRead();
     }
     setActiveTab(tab);
   };
@@ -43,8 +90,33 @@ export function MainScreen(props: Props) {
   useEffect(() => {
     if (!props.pairing.paired) {
       setActiveTab("profile");
+      setUnreadChatCount(0);
     }
   }, [props.pairing.paired]);
+
+  useEffect(() => {
+    if (!props.pairing.paired) {
+      return;
+    }
+
+    if (activeTab === "chat") {
+      void markChatRead();
+      return;
+    }
+
+    void refreshUnreadCount();
+  }, [activeTab, markChatRead, props.pairing.paired, refreshUnreadCount]);
+
+  useEffect(() => {
+    if (props.suspended || !props.pairing.paired || activeTab === "chat") {
+      return;
+    }
+
+    const timer = setInterval(() => {
+      void refreshUnreadCount();
+    }, 30_000);
+    return () => clearInterval(timer);
+  }, [activeTab, props.pairing.paired, props.suspended, refreshUnreadCount]);
 
   useEffect(() => {
     if (props.suspended) {
@@ -61,6 +133,15 @@ export function MainScreen(props: Props) {
         if (payload.type === "pairing.ended") {
           props.onPairingChanged(payload.pairing);
         }
+        if (payload.type === "chat.message_created") {
+          if (payload.message.sender_user_id !== props.user.id) {
+            if (activeTab === "chat") {
+              void markChatRead();
+            } else {
+              setUnreadChatCount((count) => Math.min(999, count + 1));
+            }
+          }
+        }
       } catch {
         // Other screens own their detailed realtime handling.
       }
@@ -74,7 +155,7 @@ export function MainScreen(props: Props) {
       clearInterval(keepAlive);
       socket.close();
     };
-  }, [props.onPairingChanged, props.suspended, props.token]);
+  }, [activeTab, markChatRead, props.onPairingChanged, props.suspended, props.token, props.user.id]);
 
   return (
     <View style={styles.screen}>
@@ -133,7 +214,16 @@ export function MainScreen(props: Props) {
                   pressed && styles.tabButtonPressed,
                 ]}
               >
-                <Text style={[styles.tabIcon, active && styles.tabTextActive]}>{tab.icon}</Text>
+                <View style={styles.tabIconWrap}>
+                  <Text style={[styles.tabIcon, active && styles.tabTextActive]}>{tab.icon}</Text>
+                  {tab.key === "chat" && unreadChatCount > 0 ? (
+                    <View style={styles.unreadBadge}>
+                      <Text style={styles.unreadBadgeText}>
+                        {formatUnreadCount(unreadChatCount)}
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
                 <Text style={[styles.tabText, active && styles.tabTextActive]}>{tab.label}</Text>
               </Pressable>
             );
@@ -184,6 +274,12 @@ const styles = StyleSheet.create({
   tabButtonPressed: {
     opacity: 0.72
   },
+  tabIconWrap: {
+    minWidth: 36,
+    minHeight: 24,
+    alignItems: "center",
+    justifyContent: "center"
+  },
   tabIcon: {
     color: colors.tertiaryText,
     fontSize: 20,
@@ -196,5 +292,26 @@ const styles = StyleSheet.create({
   },
   tabTextActive: {
     color: colors.primary
+  },
+  unreadBadge: {
+    position: "absolute",
+    top: -3,
+    right: 2,
+    minWidth: 17,
+    height: 17,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 9,
+    backgroundColor: colors.danger,
+    paddingHorizontal: 4,
+    borderWidth: 1.5,
+    borderColor: "rgba(248,248,248,0.94)"
+  },
+  unreadBadgeText: {
+    color: colors.surface,
+    fontSize: 10,
+    fontWeight: "800",
+    includeFontPadding: false,
+    textAlignVertical: "center"
   }
 });
