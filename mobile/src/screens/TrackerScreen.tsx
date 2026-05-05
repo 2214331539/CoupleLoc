@@ -20,7 +20,9 @@ import {
 import { SafeScreen } from "../components/SafeScreen";
 import {
   getPermissionSnapshot,
+  requestBackgroundLocationPermission,
   requestForegroundLocationPermission,
+  startBackgroundLocation,
   stopBackgroundLocation,
   uploadDeviceLocation,
   type DeviceLocation,
@@ -170,6 +172,7 @@ export function TrackerScreen({
   const [memoryPoints, setMemoryPoints] = useState<MemoryPoint[]>([]);
   const [permission, setPermission] = useState<PermissionSnapshot | null>(null);
   const [amapReady, setAmapReady] = useState(false);
+  const [backgroundTrackingActive, setBackgroundTrackingActive] = useState(false);
   const [chromeCollapsed, setChromeCollapsed] = useState(false);
   const [status, setStatus] = useState<string>("准备同步位置");
   const [socketState, setSocketState] = useState<"connecting" | "open" | "closed">("closed");
@@ -243,7 +246,13 @@ export function TrackerScreen({
   };
 
   const handleAmapLocation = async (event: { nativeEvent: DeviceLocation }) => {
-    if (suspended || !sharing.enabled || sharing.mode === "paused" || amapUploadInFlightRef.current) {
+    if (
+      suspended ||
+      !sharing.enabled ||
+      sharing.mode === "paused" ||
+      backgroundTrackingActive ||
+      amapUploadInFlightRef.current
+    ) {
       return;
     }
 
@@ -475,6 +484,7 @@ export function TrackerScreen({
 
     async function startTracking() {
       await stopBackgroundLocation().catch(() => undefined);
+      setBackgroundTrackingActive(false);
       if (cancelled) {
         return;
       }
@@ -503,6 +513,39 @@ export function TrackerScreen({
         return;
       }
 
+      if (sharing.mode === "always") {
+        setStatus("正在请求后台定位权限");
+        const backgroundGranted = await requestBackgroundLocationPermission();
+        if (cancelled) {
+          return;
+        }
+
+        await refreshPermissionSnapshot();
+        if (!backgroundGranted) {
+          setStatus("需要允许始终定位；当前仅在打开定位页时同步");
+          return;
+        }
+
+        try {
+          await startBackgroundLocation(token);
+          if (cancelled) {
+            return;
+          }
+          setBackgroundTrackingActive(true);
+          await refreshPermissionSnapshot();
+          setStatus("高德后台定位运行中");
+          return;
+        } catch (err) {
+          if (cancelled) {
+            return;
+          }
+          setBackgroundTrackingActive(false);
+          await refreshPermissionSnapshot();
+          setStatus(err instanceof Error ? `后台定位启动失败：${err.message}` : "后台定位启动失败，前台打开时仍会同步");
+          return;
+        }
+      }
+
       setStatus("高德地图前台定位中");
     }
 
@@ -513,7 +556,7 @@ export function TrackerScreen({
     return () => {
       cancelled = true;
     };
-  }, [sharing.enabled, sharing.mode, suspended]);
+  }, [sharing.enabled, sharing.mode, suspended, token]);
 
   const toggleSharing = async (enabled: boolean) => {
     setStatus(enabled ? "正在开启共享" : "正在暂停共享");
@@ -539,11 +582,17 @@ export function TrackerScreen({
 
   const socketLabel = socketState === "open" ? "实时在线" : socketState === "connecting" ? "连接中" : "离线";
   const amapLocationEnabled = !suspended && sharing.enabled && sharing.mode !== "paused";
-  const locationSourceLabel = !amapLocationEnabled
-    ? "已暂停"
-    : permission?.foreground === "granted" && permission.servicesEnabled
-      ? "高德前台"
-      : "待授权";
+  const backgroundLocationRunning = backgroundTrackingActive || permission?.backgroundServiceRunning;
+  let locationSourceLabel = "待授权";
+  if (!amapLocationEnabled) {
+    locationSourceLabel = "已暂停";
+  } else if (backgroundLocationRunning) {
+    locationSourceLabel = "高德后台";
+  } else if (sharing.mode === "always" && permission?.background !== "granted") {
+    locationSourceLabel = "需后台权限";
+  } else if (permission?.foreground === "granted" && permission.servicesEnabled) {
+    locationSourceLabel = "高德前台";
+  }
 
   return (
     <View style={styles.screen}>
@@ -673,7 +722,7 @@ export function TrackerScreen({
               />
               <StatTile
                 label="定位来源"
-                tone={locationSourceLabel === "高德前台" ? "mint" : "plain"}
+                tone={locationSourceLabel.startsWith("高德") ? "mint" : "plain"}
                 value={locationSourceLabel}
               />
               <StatTile label="记忆点" value={`${memoryPoints.length} 个`} />

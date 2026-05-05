@@ -13,9 +13,13 @@ module.exports = {
       usesCleartextTraffic: true,
       softwareKeyboardLayoutMode: "resize",
       permissions: [
+        "ACCESS_BACKGROUND_LOCATION",
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION",
-        "POST_NOTIFICATIONS"
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_LOCATION",
+        "POST_NOTIFICATIONS",
+        "RECEIVE_BOOT_COMPLETED"
       ]
     },
     plugins: ["expo-secure-store"],
